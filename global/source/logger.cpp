@@ -29,7 +29,7 @@ static void logTime() {
 }
 
 enum status logOpen() {
-    logFile = fopen(logFileName, "a");
+    logFile = fopen(logFileName, "w");
     if (!logFile) return ERROR;
     setbuf(logFile, NULL); //disabling buffering
 

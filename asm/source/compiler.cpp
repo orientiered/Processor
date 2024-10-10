@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "sfuOperations.h"
 #include "error_debug.h"
 #include "utils.h"
 #include "logger.h"
@@ -22,6 +23,9 @@ static enum CMD_OPS cmdToEnum(const char *cmd) {
         {"sub", CMD_SUB},
         {"mul", CMD_MUL},
         {"div", CMD_DIV},
+        {"sqrt", CMD_SQRT},
+        {"in", CMD_IN},
+        {"dump", CMD_DUMP},
         {"out", CMD_OUT},
         {"hlt", CMD_HLT}
         //TODO: add more commands
@@ -30,7 +34,7 @@ static enum CMD_OPS cmdToEnum(const char *cmd) {
         if (strcmp(cmd, commands[idx].name) == 0)
             return commands[idx].op;
     }
-    return CMD_SNTXERR;
+    return SNTXERR;
 
 }
 
@@ -38,15 +42,23 @@ bool compile(const char *inName, const char *outName) {
     char cmd[50] = "";
     int *code = (int *) calloc(MAX_CODE_SIZE, sizeof(int));
     size_t ip = 0;
+    size_t lineCnt = 1;
     FILE* inFile = fopen(inName, "rb");
     while (fscanf(inFile, "%s", cmd) != EOF) {
         logPrint(L_EXTRA, 0, "ip = %zu, Parsing cmd: `%s`\n", ip, cmd);
         code[ip] = cmdToEnum(cmd);
+        if (code[ip] == SNTXERR) {
+            free(code);
+            fclose(inFile);
+            logPrint(L_ZERO, 1, "Syntax error in %s:%zu : unknown command %s\n", inName, lineCnt, cmd);
+            return false;
+        }
         logPrint(L_EXTRA, 0, "Cmd number: `%d`\n", code[ip]);
         if (code[ip] == CMD_PUSH) {
             ip++;
             fscanf(inFile, "%d", &code[ip]);
         }
+        lineCnt++;
         ip++;
     }
     fclose(inFile);

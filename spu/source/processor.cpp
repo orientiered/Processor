@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 
 #include "error_debug.h"
 #include "utils.h"
 #include "logger.h"
 #include "cStack.h"
+#include "sfuOperations.h"
 #include "processor.h"
 
 static const size_t startStackSize = 5;
@@ -79,9 +81,27 @@ bool cpuRun(cpu_t *cpu) {
             ip++;
             break;
             }
+        case CMD_SQRT: {
+            int val = stackPop(&cpu->stk);
+            stackPush(&cpu->stk, (int)sqrt(val));
+            ip++;
+            break;
+            }
         case CMD_OUT: {
             int val = stackPop(&cpu->stk);
             printf("Result: %d\n", val);
+            ip++;
+            break;
+            }
+        case CMD_IN: {
+            int val = 0;
+            scanf("%d", &val);
+            stackPush(&cpu->stk, val);
+            ip++;
+            break;
+            }
+        case CMD_DUMP: {
+            stackDump(&cpu->stk);
             ip++;
             break;
             }

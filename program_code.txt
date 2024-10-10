@@ -1,10 +1,18 @@
 push 100
 push 100
 add
+sqrt
+dump
+in
+in
+dump
+mul
+dump
 push -5
 push 1
 div
 mul
+div
 out
 hlt
 

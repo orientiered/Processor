@@ -1,8 +1,8 @@
 .vscode/
 spu/build/
-logs/
-main.exe
-main
-run
-run.exe
+asm/build/
 log.txt
+spu.out
+asm.out
+program.asm
+
