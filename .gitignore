@@ -1,0 +1,8 @@
+.vscode/
+build/
+logs/
+main.exe
+main
+run
+run.exe
+log.txt

@@ -1,0 +1,27 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+
+#include "error_debug.h"
+#include "logger.h"
+#include "argvProcessor.h"
+#include "cStack.h"
+#include "processor.h"
+
+int main(int argc, const char *argv[]) {
+    logOpen();
+    setLogLevel(L_EXTRA);
+    registerFlag(TYPE_STRING, "-i", "--input", "input file with code");
+    processArgs(argc, argv);
+
+    const char *fileName = "program_code.txt";
+    if (isFlagSet("-i"))
+        fileName = getFlagValue("-i").string_;
+
+    cpu_t cpu = cpuCtor(fileName);
+
+    cpuRun(&cpu);
+    cpuDtor(&cpu);
+    logClose();
+    return 0;
+}
