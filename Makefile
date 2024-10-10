@@ -36,34 +36,41 @@ ifeq ($(origin CC),default)
 	CC=g++
 endif
 
-#Name of compiled executable
-NAME=run
+#Names of compiled executable
+NAME_PROC = run
+NAME_ASM = asm
+NAMES = asm run
+#.cpp WITH main()
+MAIN_SRCS := source/asm.cpp source/run.cpp
 #Name of directory where .o and .d files will be stored
 OBJDIR = build
 #Name of directory with headers
-INCLUDEDIR = include
-#Name of directory with .cpp
-SRCDIR = source
+INCLUDEDIRS = include global/include stack/include
 #Name of directory where doxygen documentation will be generated
 DOXYDIR = doxDocs
 
-#Note: ALL cpps in source dir will be compiled
-#Getting all cpps
-SRCS := $(wildcard $(SRCDIR)/*.cpp)
-#Replacing .cpp with .o, temporary variable
-TOBJS := $(SRCS:%.cpp=%.o)
+#All cpps WITHOUT .cpp with main()
+LIB_SRCS := global/argvProcessor.cpp global/logger.cpp global/utils.cpp stack/cStack.cpp source/processor.cpp
+#all cpps
+SRCS := $(MAIN_SRCS) $(LIB_SRCS)
+#Replacing .cpp with .o,
+OBJS := $(SRCS:%.cpp=%.o)
 #Replacing src dir to obj dir
-OBJS := $(TOBJS:$(SRCDIR)%=$(OBJDIR)%)
-
+OBJS := $(OBJS:global/%=$(OBJDIR)/%)
+OBJS := $(OBJS:stack/%=$(OBJDIR)/%)
+OBJS := $(OBJS:source/%=$(OBJDIR)/%)
+MAIN_OBJS := $(filter $(patsubst %,$(OBJDIR)/%.o, $(NAMES)),$(OBJS))
 #Dependencies for .cpp files, they are stored with .o objects
 DEPS := $(OBJS:%.o=%.d)
 
 #flag to tell compiler where headers are located
-override CFLAGS += -I./$(INCLUDEDIR)
+override CFLAGS += $(addprefix -I./,$(INCLUDEDIRS))
 
-#Main target to compile executable
-$(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@
+#Main target to compile executables
+#Filtering other mains from objects
+$(NAMES): $(OBJS)
+	echo $(MAIN_OBJS)
+	$(CC) $(CFLAGS) $(filter-out $(MAIN_OBJS),$(OBJS)) $(OBJDIR)/$@.o -o $@
 
 #Easy rebuild in release mode
 RELEASE:
@@ -71,15 +78,17 @@ RELEASE:
 	make BUILD=RELEASE
 
 #Automatic target to compile object files
-$(OBJS) : $(OBJDIR)/%.o : $(SRCDIR)/%.cpp
+$(OBJS) : $(SRCS)
 	$(CMD_MKDIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $(filter %$(subst .o,,$(subst build/,,$@)).cpp, $(SRCS)) -o $@
 
 #Idk how it works, but is uses compiler preprocessor to automatically generate
 #.d files with included headears that make can use
-$(DEPS) : $(OBJDIR)/%.d : $(SRCDIR)/%.cpp
+#$(DEPS) : $@ :$(filter %$(subst .d,,$(subst build/,,$@)).cpp, $(SRCS))
+$(DEPS): $(SRCS)
 	$(CMD_MKDIR)
-	$(CC) -E $(CFLAGS) $< -MM -MT $(@:.d=.o) > $@
+	echo $(filter %$(subst .d,,$(subst build/,,$@)).cpp, $(SRCS))
+	$(CC) -E $(CFLAGS) $(filter %$(subst .d,,$(subst build/,,$@)).cpp, $(SRCS)) -MM -MT $(@:.d=.o) > $@
 
 .PHONY:init
 init:
@@ -90,7 +99,6 @@ init:
 .PHONY:clean
 clean:
 	$(CMD_DEL)
-
 
 .PHONY:doxygen
 doxygen:
