@@ -6,10 +6,13 @@ ifeq ($(origin CC),default)
 	CC=g++
 endif
 
-all:spu
+all:spu asm
 .PHONY: spu
 spu:
 	$(MAKE) -f MakefileSPU CC=$(CC) SYSTEM=$(SYSTEM) BUILD=$(BUILD)
-
+.PHONY: asm
+asm:
+	$(MAKE) -f MakefileASM CC=$(CC) SYSTEM=$(SYSTEM) BUILD=$(BUILD)
 clean:
 	$(MAKE) -f MakefileSPU clean
+	$(MAKE) -f MakefileASM clean
