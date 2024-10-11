@@ -1,18 +1,19 @@
-push 100
-push 100
-add
-sqrt
-dump
 in
-in
-dump
+pop     rbx
+push    0
+pop     rax
+
+push    rax
+push    rax
 mul
-dump
-push -5
-push 1
-div
-mul
-div
 out
+
+push    rax 1
+pop     rax
+
+push    rax
+push    rbx
+ja      7
+
 hlt
 

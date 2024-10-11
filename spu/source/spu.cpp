@@ -6,11 +6,12 @@
 #include "logger.h"
 #include "argvProcessor.h"
 #include "cStack.h"
+#include "cpuCommands.h"
 #include "processor.h"
 
 int main(int argc, const char *argv[]) {
     logOpen();
-    setLogLevel(L_EXTRA);
+    // setLogLevel(L_EXTRA);
     registerFlag(TYPE_STRING, "-i", "--input", "input file with code");
     processArgs(argc, argv);
 
@@ -18,7 +19,8 @@ int main(int argc, const char *argv[]) {
     if (isFlagSet("-i"))
         fileName = getFlagValue("-i").string_;
 
-    cpu_t cpu = cpuCtor(fileName);
+    cpu_t cpu = {0};
+    cpuCtor(&cpu, fileName);
 
     cpuRun(&cpu);
     cpuDtor(&cpu);
