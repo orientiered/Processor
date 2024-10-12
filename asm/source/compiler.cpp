@@ -8,6 +8,7 @@
 #include "error_debug.h"
 #include "utils.h"
 #include "logger.h"
+#include "txtReader.h"
 #include "compiler.h"
 
 
@@ -56,7 +57,7 @@ static enum CMD_OPS cmdToEnum(const char *cmd) {
 static int scanPushArgs(int *code, FILE* inFile, char * cmd) {
     int ipMove = 0;
 
-    if (fscanf(inFile, "%d", &code[1]) == 1) {
+    if (fscanf(inFile, "%d", code + 1) == 1) {
         *code |= MASK_IMMEDIATE;
         ipMove++;
     } else {
@@ -66,7 +67,7 @@ static int scanPushArgs(int *code, FILE* inFile, char * cmd) {
         code[1] = cmdToReg(cmd);
         if (code[1] == CMD_SNTXERR)
             return CMD_SNTXERR;
-        if (fscanf(inFile, "%d", &code[2]) == 1) {
+        if (fscanf(inFile, "%d", code + 2) == 1) {
             *code |= MASK_IMMEDIATE;
             ipMove++;
         }

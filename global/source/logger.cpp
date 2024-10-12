@@ -56,6 +56,10 @@ void setLogLevel(enum LogLevel level) {
     globalLogLevel = level;
 }
 
+enum LogLevel getLogLevel() {
+    return globalLogLevel;
+}
+
 enum status logPrintWithTime(enum LogLevel level, bool copyToStderr, const char* fmt, ...) {
     MY_ASSERT(logFile, abort());
     if (level > globalLogLevel)

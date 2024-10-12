@@ -21,6 +21,9 @@ enum status logClose();
 /// @brief Set log level
 void setLogLevel(enum LogLevel level);
 
+/// @brief Get log level
+enum LogLevel getLogLevel();
+
 /// @brief Print in log file with time signature
 enum status logPrintWithTime(enum LogLevel level, bool copyToStderr, const char* fmt, ...);
 

@@ -48,7 +48,7 @@ OBJDIR := build
 INCLUDEDIRS := $(CUR_DIR)/include global/include stack/include
 
 #All cpps WITHOUT .cpp with main()
-LIB_SRCS := global/source/argvProcessor.cpp global/source/logger.cpp global/source/utils.cpp stack/source/cStack.cpp $(CUR_DIR)/source/compiler.cpp
+LIB_SRCS := global/cource/txtReader.cpp global/source/argvProcessor.cpp global/source/logger.cpp global/source/utils.cpp stack/source/cStack.cpp $(CUR_DIR)/source/compiler.cpp
 #all cpps
 SRCS := $(MAIN_SRC) $(LIB_SRCS)
 #Replacing .cpp with .o,

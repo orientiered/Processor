@@ -74,6 +74,7 @@ static int getPushArg(cpu_t *cpu) {
 }
 
 bool cpuDump(cpu_t *cpu) {
+    if (getLogLevel() < L_DEBUG) return true;
     logPrint(L_DEBUG, 0, "------------------CPU DUMP----------------------\n");
     size_t curPosition = ((size_t)(cpu->ip - cpu->code));
     size_t startPos = (curPosition > 10) ? curPosition - 10 : 0;
@@ -88,6 +89,7 @@ bool cpuDump(cpu_t *cpu) {
     logPrint(L_DEBUG, 0, "\n");
     for (size_t spaceCnt = 0; spaceCnt < (curPosition-startPos)*4 + 3; spaceCnt++)
         logPrint(L_DEBUG, 0, " ");
+
     logPrint(L_DEBUG, 0, "^\n");
 
     // logPrint(L_DEBUG, 0, "ip = %zu, stk.size = %zu\n", ip, stackGetSize(&cpu->stk));
@@ -162,7 +164,7 @@ bool cpuRun(cpu_t *cpu) {
             }
             case CMD_OUT: {
                 int val = stackPop(&cpu->stk);
-                printf("Result: %d\n", val);
+                printf("%d\n", val);
                 cpu->ip++;
                 break;
             }

@@ -11,7 +11,7 @@
 
 int main(int argc, const char *argv[]) {
     logOpen();
-    // setLogLevel(L_EXTRA);
+    setLogLevel(L_DEBUG);
     registerFlag(TYPE_STRING, "-i", "--input", "input file with code");
     processArgs(argc, argv);
 
