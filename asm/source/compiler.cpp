@@ -14,7 +14,6 @@
 
 static int cmdToReg(const char *cmd);
 static enum CMD_OPS cmdToEnum(const char *cmd);
-static int scanPushArgs(int *code, FILE* inFile, char * cmd);
 
 static int cmdToReg(const char *cmd) {
     if (strlen(cmd) != 3)
@@ -54,20 +53,24 @@ static enum CMD_OPS cmdToEnum(const char *cmd) {
 
 }
 
-static int scanPushArgs(int *code, FILE* inFile, char * cmd) {
+static int scanPushArgs(int *code, char **line, char * cmd) {
     int ipMove = 0;
 
-    if (fscanf(inFile, "%d", code + 1) == 1) {
+    int scannedChars = 0;
+    if (sscanf(*line, "%d%n", code + 1, &scannedChars) == 1) {
+        *line += scannedChars;
         *code |= MASK_IMMEDIATE;
         ipMove++;
     } else {
-        fscanf(inFile, "%s", cmd);
+        sscanf(*line, "%s%n", cmd, &scannedChars);
+        *line += scannedChars;
         *code |= MASK_REGISTER;
         ipMove++;
         code[1] = cmdToReg(cmd);
         if (code[1] == CMD_SNTXERR)
             return CMD_SNTXERR;
-        if (fscanf(inFile, "%d", code + 2) == 1) {
+        if (sscanf(*line, "%d%n", code + 2, &scannedChars) == 1) {
+            *line += scannedChars;
             *code |= MASK_IMMEDIATE;
             ipMove++;
         }
@@ -75,57 +78,86 @@ static int scanPushArgs(int *code, FILE* inFile, char * cmd) {
     return ipMove;
 }
 
+static int parseCodeLine(char *line, int *code, char *cmd) {
+    int ip = 0;
+    int scannedChars = 0;
+    logPrint(L_EXTRA, 0, "---Parsing line '%s'\n", line);
+    while (sscanf(line, "%s%n", cmd, &scannedChars) == 1) {
+        logPrint(L_EXTRA, 0, "line before move: '%s'\n", line);
+        line += scannedChars;
+        logPrint(L_EXTRA, 0, "line after  move: '%s'\n", line);
+        logPrint(L_EXTRA, 0, "ip = %d, Parsing cmd: `%s`\n", ip, cmd);
+        code[ip] = cmdToEnum(cmd);
+        if (code[ip] == CMD_SNTXERR)
+            return CMD_SNTXERR;
+        logPrint(L_EXTRA, 0, "Cmd number: `%d`\n", code[ip]);
+
+        switch(code[ip]) {
+            case CMD_PUSH: {
+                //TODO: add '+' between register and number
+                int argCnt = scanPushArgs(&code[ip], &line, cmd);
+                logPrint(L_EXTRA, 0, "Scanned push args: %d\n", argCnt);
+                if (argCnt == CMD_SNTXERR)
+                    return CMD_SNTXERR;
+                ip += argCnt;
+                break;
+            }
+            case CMD_JMP:
+            case CMD_JA: {
+                if (sscanf(line, "%d%n", &code[ip+1], &scannedChars) != 1)
+                    return CMD_SNTXERR;
+                line += scannedChars;
+                ip++;
+                break;
+            }
+            case CMD_POP: {
+                sscanf(line, "%s%n", cmd, &scannedChars);
+                line += scannedChars;
+                ip++;
+                code[ip] = cmdToReg(cmd);
+                if (code[ip] == CMD_SNTXERR)
+                    return CMD_SNTXERR;
+                break;
+            }
+            default:
+                break;
+        }
+        ip++;
+    }
+    return ip;
+}
+
 bool compile(const char *inName, const char *outName) {
     char cmd[50] = "";
     int *code = (int *) calloc(MAX_CODE_SIZE, sizeof(int));
     size_t ip = 0;
-    size_t lineCnt = 1;
-    FILE* inFile = fopen(inName, "rb");
 
+    size_t lineCnt = 0;
+    char **codeLines = readLinesFromFile(inName, &lineCnt);
+    for (size_t idx = 0; idx < lineCnt; idx++) {
+        logPrint(L_EXTRA, 0, "%s\n", codeLines[idx]);
+    }
     #define CHECK_SNTXERR(err)                                                                              \
         if (err == CMD_SNTXERR) {                                                                           \
             free(code);                                                                                     \
-            fclose(inFile);                                                                                 \
-            logPrint(L_ZERO, 1, "Syntax error in %s:%zu : unknown command %s\n", inName, lineCnt, cmd);     \
+            free(codeLines[0]);                                                                             \
+            free(codeLines);                                                                                \
+            logPrint(L_ZERO, 1, "Syntax error in %s:%zu : unknown command %s\n", inName, lineIdx+1, cmd);   \
             return false;                                                                                   \
         }
+    for (size_t lineIdx = 0; lineIdx < lineCnt; lineIdx++) {
+        //erasing comments: they start with ;
+        char *semicolon = strchr(codeLines[lineIdx], ';');
+        if (semicolon != NULL) *semicolon = '\0';
 
-    while (fscanf(inFile, "%s", cmd) != EOF) {
-        logPrint(L_EXTRA, 0, "ip = %zu, Parsing cmd: `%s`\n", ip, cmd);
-        code[ip] = cmdToEnum(cmd);
-        CHECK_SNTXERR(code[ip]);
-        logPrint(L_EXTRA, 0, "Cmd number: `%d`\n", code[ip]);
-        switch(code[ip]) {
-        case CMD_PUSH: {
-            //TODO: add '+' between register and number
-            int argCnt = scanPushArgs(&code[ip], inFile, cmd);
-            CHECK_SNTXERR(argCnt);
-            ip += argCnt;
-            break;
-        }
-        case CMD_JMP:
-        case CMD_JA: {
-            if (fscanf(inFile, "%d", &code[ip+1]) != 1) {
-                CHECK_SNTXERR(CMD_SNTXERR);
-            }
-            ip++;
-            break;
-        }
-        case CMD_POP: {
-            fscanf(inFile, "%s", cmd);
-            ip++;
-            code[ip] = cmdToReg(cmd);
-            CHECK_SNTXERR(code[ip]);
-            break;
-        }
-        default:
-            break;
-        }
-        lineCnt++;
-        ip++;
+        int ipMove = parseCodeLine(codeLines[lineIdx], code + ip, cmd);
+        CHECK_SNTXERR(ipMove);
+        ip += ipMove;
     }
+
     #undef CHECK_SNTXERR
-    fclose(inFile);
+    free(codeLines[0]);
+    free(codeLines);
     size_t codeSize = ip;
     FILE *outFile = fopen(outName, "wb");
     fprintf(outFile, "%s ", CPU_SIGNATURE);

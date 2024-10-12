@@ -6,6 +6,8 @@
 #include "compiler.h"
 int main(int argc, const char *argv[]) {
     logOpen();
+    setLogLevel(L_EXTRA);
+
     registerFlag(TYPE_STRING, "-i", "--input", "Input file name");
     registerFlag(TYPE_STRING, "-o", "--o", "Output file name");
     if (processArgs(argc, argv) != SUCCESS)

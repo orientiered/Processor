@@ -5,7 +5,7 @@ enum status openFile(FILE **file, const char *fileName, const char *mode);
 
 enum status getFileSize(const char *fileName, size_t *size);
 
-char **readLinesFromFile(const char *fileName);
+char **readLinesFromFile(const char *fileName, size_t *linesNum);
 
 
 #endif

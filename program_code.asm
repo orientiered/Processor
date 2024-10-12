@@ -1,10 +1,9 @@
 in
-pop     rbx
+pop     rbx ; Hello, there's comment example
 push    0
 pop     rax
 
-push    rax
-push    rax
+push    rax push    rax
 mul
 out
 

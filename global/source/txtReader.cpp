@@ -33,7 +33,7 @@ enum status getFileSize(const char *fileName, size_t *size) {
 }
 
 
-char **readLinesFromFile(const char *fileName) {
+char **readLinesFromFile(const char *fileName, size_t *linesNum) {
     MY_ASSERT(fileName, abort());
     size_t size = 0;
     getFileSize(fileName, &size);
@@ -49,6 +49,7 @@ char **readLinesFromFile(const char *fileName) {
         return NULL;
     }
     fread(text, sizeof(char), size, file);
+    fclose(file);
 
     size_t linesCnt = 0;
     for (size_t idx = 0; idx < size; idx++) {
@@ -75,6 +76,6 @@ char **readLinesFromFile(const char *fileName) {
             prevIsEOL = true;
         }
     }
-
+    *linesNum = linesCnt;
     return lines;
 }
