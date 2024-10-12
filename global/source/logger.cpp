@@ -31,11 +31,15 @@ static void logTime() {
 enum status logOpen() {
     logFile = fopen(logFileName, "w");
     if (!logFile) return ERROR;
-    setbuf(logFile, NULL); //disabling buffering
-
     fprintf(logFile, "------------------------------------------\n");
     logTime();
     fprintf(logFile, "Starting logging session\n");
+    return SUCCESS;
+}
+
+enum status logDisableBuffering() {
+    if (!logFile) return ERROR;
+    setbuf(logFile, NULL); //disabling buffering
     return SUCCESS;
 }
 

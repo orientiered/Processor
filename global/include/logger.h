@@ -15,6 +15,10 @@ enum LogLevel {
 /// @brief Open log file
 enum status logOpen();
 
+/// @brief Disables buffering
+//! Warning: makes write crazy slow
+enum status logDisableBuffering();
+
 /// @brief Close log file
 enum status logClose();
 

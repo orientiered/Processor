@@ -1,9 +1,8 @@
 .vscode/
+*.lol
 spu/build/
 asm/build/
 log.txt
 spu.out
 asm.out
 input.txt
-program.asm
-
