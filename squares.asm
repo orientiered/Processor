@@ -3,6 +3,8 @@ pop     rbx ; Hello, there's comment example
 push    0
 pop     rax
 
+START:
+
 push    rax push    rax
 mul
 out
@@ -12,7 +14,8 @@ pop     rax
 
 push    rax
 push    rbx
-ja      7
+
+ja     START:
+
 
 hlt
-

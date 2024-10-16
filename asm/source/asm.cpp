@@ -5,6 +5,7 @@
 #include "error_debug.h"
 #include "logger.h"
 #include "argvProcessor.h"
+#include "myVector.h"
 #include "compiler.h"
 
 char *constructOutName(const char *inName, const char *extensionName);
@@ -12,6 +13,7 @@ char *constructOutName(const char *inName, const char *extensionName);
 int main(int argc, const char *argv[]) {
     const char *extensionName = ".lol";
     logOpen();
+    logDisableBuffering();
     setLogLevel(L_EXTRA);
 
     registerFlag(TYPE_STRING, "-i", "--input", "Input file name");
@@ -31,20 +33,21 @@ int main(int argc, const char *argv[]) {
 
     bool compileResult = compile(inputName, outName);
 
-    if (!isFlagSet("-o"))
-            free(outName);
 
     if (!compileResult)
         logPrint(L_ZERO, 1, "Compilation failed :(\n");
     else
         logPrint(L_ZERO, 1, "Successfully compiled to %s\n", outName);
 
+    if (!isFlagSet("-o"))
+            free(outName);
+
     logClose();
 
     return (compileResult == true) ? 0 : 1;
 }
 
-char *constructOutName(const char *inName, const char* extensionName) {
+char *constructOutName(const char *inputName, const char* extensionName) {
     char *outName = NULL;
     const char *dotPos = strrchr(inputName, '.');
     if (dotPos == NULL) {

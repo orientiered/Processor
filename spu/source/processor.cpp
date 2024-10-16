@@ -91,7 +91,12 @@ bool cpuDump(cpu_t *cpu) {
         logPrint(L_DEBUG, 0, " ");
 
     logPrint(L_DEBUG, 0, "^\n");
+    logPrint(L_DEBUG, 0, "Stack: ");
+    for (size_t idx = 0; idx < stackGetSize(&cpu->stk); idx++)
+        logPrint(L_DEBUG, 0, "%d ", cpu->stk.data[idx]);
+    logPrint(L_DEBUG, 0, "\n");
 
+    logPrint(L_DEBUG, 0, "REGISTERS: rax = %d, rbx = %d, rcx = %d, rdx = %d\n", cpu->regs[1], cpu->regs[2], cpu->regs[3], cpu->regs[4]);
     // logPrint(L_DEBUG, 0, "ip = %zu, stk.size = %zu\n", ip, stackGetSize(&cpu->stk));
     logPrint(L_DEBUG, 0, "------------------------------------------------\n");
 

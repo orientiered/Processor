@@ -11,11 +11,16 @@
 
 int main(int argc, const char *argv[]) {
     logOpen();
-    setLogLevel(L_DEBUG);
+    setLogLevel(L_ZERO);
     registerFlag(TYPE_STRING, "-i", "--input", "input file with code");
+    registerFlag(TYPE_BLANK,  "-d", "--debug", "Disables log buffering and sets max logLevel");
     processArgs(argc, argv);
 
     const char *fileName = "program_code.txt";
+    if (isFlagSet("-d")) {
+        logDisableBuffering();
+        setLogLevel(L_EXTRA);
+    }
     if (isFlagSet("-i"))
         fileName = getFlagValue("-i").string_;
 

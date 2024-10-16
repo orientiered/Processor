@@ -3,7 +3,7 @@
 
 const size_t MAX_CODE_SIZE = 2048;
 const size_t MAX_CMD_SIZE  = 128;
-
+const char * const COMMENT_SYMBOLS = ";#";
 const int POISON_IP = -1;
 typedef struct {
     int ip;
@@ -13,6 +13,7 @@ typedef struct {
 typedef struct {
     int *ip;
     int index;
+    size_t lineIdx;
 } jmpLabel_t;
 
 typedef struct {

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #include "utils.h"
 #include "myVector.h"
@@ -16,8 +17,8 @@ void *vectorGet(Vector_t *vec, size_t i) {
 }
 
 void *vectorFind(Vector_t *vec, const void *elem) {
-    for (char *idx = vec->base; idx <= (char *)vectorGet(vec->base, vec->size - 1); idx += vec->elemSize) {
-        if (memcpy(idx, elem)==0)
+    for (char *idx = (char *)vec->base; idx <= (char *)vectorGet(vec, vec->size - 1); idx += vec->elemSize) {
+        if (memcpy(idx, elem, vec->elemSize)==0)
             return idx;
     }
     return NULL;
@@ -50,8 +51,8 @@ void* vectorPush(Vector_t* vec, const void* elem) {
         vec->base = newBase;
     }
     vec->size++;
-    memcpy(vectorGet(*vec, vec->size-1), elem, vec->elemSize);
-    return vectorGet(*vec, vec->size-1);
+    memcpy(vectorGet(vec, vec->size-1), elem, vec->elemSize);
+    return vectorGet(vec, vec->size-1);
 }
 
 void *recalloc(void *base, size_t newSize, size_t oldSize) {
@@ -65,6 +66,6 @@ void *recalloc(void *base, size_t newSize, size_t oldSize) {
 void* vectorPop(Vector_t* vec) {
     if (vec->size == 0) return NULL;
     vec->size--;
-    return vectorGet(*vec, vec->size-1);
+    return vectorGet(vec, vec->size-1);
 }
 
