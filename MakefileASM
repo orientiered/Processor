@@ -45,10 +45,10 @@ MAIN_SRC := $(CUR_DIR)/source/asm.cpp
 #Name of directory where .o and .d files will be stored
 OBJDIR := build
 #Name of directory with headers
-INCLUDEDIRS := $(CUR_DIR)/include global/include stack/include
+INCLUDEDIRS := $(CUR_DIR)/include global/include containers/include
 
 #All cpps WITHOUT .cpp with main()
-LIB_SRCS := global/source/txtReader.cpp global/source/argvProcessor.cpp global/source/logger.cpp global/source/utils.cpp stack/source/cStack.cpp $(CUR_DIR)/source/compiler.cpp
+LIB_SRCS := global/source/txtReader.cpp global/source/argvProcessor.cpp global/source/logger.cpp global/source/utils.cpp containers/source/cStack.cpp $(CUR_DIR)/source/compiler.cpp
 #all cpps
 SRCS := $(MAIN_SRC) $(LIB_SRCS)
 #Replacing .cpp with .o,

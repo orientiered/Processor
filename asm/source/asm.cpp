@@ -7,6 +7,8 @@
 #include "argvProcessor.h"
 #include "compiler.h"
 
+char *constructOutName(const char *inName, const char *extensionName);
+
 int main(int argc, const char *argv[]) {
     const char *extensionName = ".lol";
     logOpen();
@@ -24,30 +26,34 @@ int main(int argc, const char *argv[]) {
     }
 
     const char *inputName = getFlagValue("-i").string_;
-    char *outName = NULL;
-    if (!isFlagSet("-o")) {
-        const char *dotPos = strrchr(inputName, '.');
-        if (dotPos == NULL) {
-            outName = (char *) calloc(strlen(inputName) + strlen(extensionName) + 1, 1);
-            strcpy(outName, inputName);
-        } else {
-            outName = (char *) calloc(size_t(dotPos - inputName) + strlen(extensionName) + 1, 1);
-            strncpy(outName, inputName, size_t(dotPos - inputName));
-        }
-        strcat(outName, extensionName);
-    } else {
-        outName = getFlagValue("-o").string_;
-    }
+    char *outName = isFlagSet("-o")  ?  getFlagValue("-o").string_ :
+                                        constructOutName(inputName, extensionName);
 
-    if (!compile(inputName, outName)) {
-        if (!isFlagSet("-o"))
-            free(outName);
-        logPrint(L_ZERO, 1, "Compilation failed :(\n");
-        logClose();
-        return 1;
-    }
-    logPrint(L_ZERO, 1, "Successfully compiled to %s\n", outName);
+    bool compileResult = compile(inputName, outName);
+
     if (!isFlagSet("-o"))
-        free(outName);
-    return 0;
+            free(outName);
+
+    if (!compileResult)
+        logPrint(L_ZERO, 1, "Compilation failed :(\n");
+    else
+        logPrint(L_ZERO, 1, "Successfully compiled to %s\n", outName);
+
+    logClose();
+
+    return (compileResult == true) ? 0 : 1;
+}
+
+char *constructOutName(const char *inName, const char* extensionName) {
+    char *outName = NULL;
+    const char *dotPos = strrchr(inputName, '.');
+    if (dotPos == NULL) {
+        outName = (char *) calloc(strlen(inputName) + strlen(extensionName) + 1, 1);
+        strcpy(outName, inputName);
+    } else {
+        outName = (char *) calloc(size_t(dotPos - inputName) + strlen(extensionName) + 1, 1);
+        strncpy(outName, inputName, size_t(dotPos - inputName));
+    }
+    strcat(outName, extensionName);
+    return outName;
 }
