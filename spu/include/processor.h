@@ -4,6 +4,7 @@
 typedef struct {
     size_t size;
     Stack_t stk;
+    Stack_t callStk;
     int *code;
     int *ip;
     int regs[CPU_REGS_COUNT + 1];

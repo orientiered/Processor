@@ -182,7 +182,10 @@ StackError_t stackPushBase(Stack_t *stk, stkElem_t val
 
 stkElem_t stackPopBase(Stack_t *stk ON_DEBUG(, const char *FILE_, int LINE_, const char *NAME_)) {
     STACK_VERBOSE_ASSERT(stk);
-    MY_ASSERT((stk->size > 0), abort());
+    MY_ASSERT((stk->size > 0), {
+        logPrint(L_ZERO, 1, "Empty stack '%s' at %s:%d\n", NAME_, FILE_, LINE_);
+        abort();
+    });
 
     logPrintWithTime(L_EXTRA, 0, "Stack_t[%p] pop: size = %lu, val = " STK_ELEM_FMT "\n",stk, stk->size, stk->data[stk->size-1]);
     stkElem_t val = stk->data[stk->size-1];

@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -28,31 +29,11 @@ static int cmdToReg(const char *cmd) {
 }
 
 static enum CMD_OPS cmdToEnum(const char *cmd) {
-    typedef struct {
-        const char *name;
-        enum CMD_OPS op;
-    } command_t;
-    const command_t commands[] = {
-        {"push" ,   CMD_PUSH    },
-        {"pop"  ,   CMD_POP     },
-        {"add"  ,   CMD_ADD     },
-        {"sub"  ,   CMD_SUB     },
-        {"mul"  ,   CMD_MUL     },
-        {"div"  ,   CMD_DIV     },
-        {"sqrt" ,   CMD_SQRT    },
-        {"jmp"  ,   CMD_JMP     },
-        {"ja"   ,   CMD_JA      },
-        {"in"   ,   CMD_IN      },
-        {"out"  ,   CMD_OUT     },
-        {"dump" ,   CMD_DUMP    },
-        {"hlt"  ,   CMD_HLT     }
-    };
-    for (size_t idx = 0; idx < ARRAY_SIZE(commands); idx++) {
-        if (strcmp(cmd, commands[idx].name) == 0)
-            return commands[idx].op;
+    for (size_t idx = 0; idx < ARRAY_SIZE(CPU_COMMANDS_ARRAY); idx++) {
+        if (strcmp(cmd, CPU_COMMANDS_ARRAY[idx].name) == 0)
+            return CPU_COMMANDS_ARRAY[idx].op;
     }
     return CMD_SNTXERR;
-
 }
 
 static bool scanPushArgs(compilerData_t *comp, char **line) {
@@ -75,17 +56,25 @@ static bool scanPushArgs(compilerData_t *comp, char **line) {
             *pushIp |= MASK_IMMEDIATE;
         }
     }
-    logPrint(L_EXTRA, 0, "__Scanned %d push arguments\n", (int)(comp->ip - pushIp));
+    logPrint(L_EXTRA, 0, "\tScanned %d push arguments\n", (int)(comp->ip - pushIp));
+    comp->ip++;
     return true;
 }
 
-static bool checkIfLabel(char *line, char *cmd) {
-    //label <=> no spaces, only one word, ends with :
-    int len = 0;
-    sscanf(line, "%s%n", cmd, &len);
-    if (cmd[len-1] == ':')
-        logPrint(L_EXTRA, 0, "__'%s' is considered as label\n", cmd);
-    return (cmd[len-1] == ':');
+static bool checkIsLabel(char *line) {
+    char *symbol = line;
+    for (;  isspace(*symbol) && *symbol != '\0'; symbol++) ;
+    char *labelStart = symbol;
+    for (; !isspace(*symbol) && *symbol != '\0'; symbol++) ;
+    bool isLabel = (symbol > (labelStart + 1) && symbol[-1] == ':');
+    if (!isLabel)
+        return false;
+
+    char temp = *symbol;
+    *symbol = '\0';
+    logPrint(L_EXTRA, 0, "\t'%s' is considered as label\n", labelStart);
+    *symbol = temp;
+    return true;
 }
 
 static label_t *findLabel(char *cmd, Vector_t* labels) {
@@ -101,7 +90,7 @@ static label_t *findLabel(char *cmd, Vector_t* labels) {
 static bool processLabel(compilerData_t *comp) {
     char *line = comp->codeLines[comp->lineIdx];
     sscanf(line, "%s", comp->cmd);
-    logPrint(L_EXTRA, 0, "Processing label '%s'\n", comp->cmd);
+    logPrint(L_EXTRA, 0, "\tProcessing label '%s'\n", comp->cmd);
     label_t *label = findLabel(comp->cmd, &comp->labels);
     if (label == NULL) {
         label_t newLabel = {(int) (comp->ip - comp->code), strdup(comp->cmd)};
@@ -118,13 +107,33 @@ static bool processLabel(compilerData_t *comp) {
     return true;
 }
 
-static bool processJmpLabel(compilerData_t *comp) {
-    MY_ASSERT(comp, abort());
-    logPrint(L_EXTRA, 0, "Parsing jmp label %s:", comp->cmd);
+static bool processJmpLabel(compilerData_t *comp, char **line) {
+    MY_ASSERT(comp && line && *line, abort());
+
+    logPrint(L_EXTRA, 0, "\tJump '%s': ", comp->cmd);
+    comp->ip++;
+
+    int scannedChars = 0;
+    if (sscanf(*line, "%d%n", comp->ip, &scannedChars) == 1) {
+        logPrint(L_EXTRA, 0, "ip = %d\n", *comp->ip);
+        comp->ip++;
+        *line += scannedChars;
+        return true;
+    }
+
+    sscanf(*line, "%s%n", comp->cmd, &scannedChars);
+    logPrint(L_EXTRA, 0, "label = '%s'\n", comp->cmd);
+    if (!checkIsLabel(comp->cmd)) {
+        logPrint(L_ZERO, 1, "Syntax error in %s:%zu : bad label in jump: '%s'\n",
+            comp->inName, comp->lineIdx+1, comp->cmd);
+        return false;
+    }
+    *line += scannedChars;
+
     label_t *label = findLabel(comp->cmd, &comp->labels);
     if (label != NULL) {
         *comp->ip = label->ip;
-        logPrint(L_EXTRA, 0, "found in labels, ip = %d\n", label->ip);
+        logPrint(L_EXTRA, 0, "\t\tFound in labels, ip = %d\n", label->ip);
         if (label->ip == POISON_IP) {
             jmpLabel_t jmpLabel = {comp->ip, comp->labels.size - 1, comp->lineIdx};
             vectorPush(&comp->fixup,  &jmpLabel);
@@ -132,68 +141,71 @@ static bool processJmpLabel(compilerData_t *comp) {
     } else {
         label_t newLabel = {-1, strdup(comp->cmd)};
         vectorPush(&comp->labels, &newLabel);
-        logPrint(L_EXTRA, 0, "push in labels, idx = %d, ip = %d\n",
-                             comp->labels.size - 1, (int)(comp->ip - comp->code));
+        logPrint(L_EXTRA, 0, "\t\tPush in labels, idx = %d, ip = %d, line = %zu\n",
+                             comp->labels.size - 1, (int)(comp->ip - comp->code), comp->lineIdx);
         jmpLabel_t jmpLabel = {comp->ip, comp->labels.size - 1, comp->lineIdx};
         vectorPush(&comp->fixup,  &jmpLabel);
     }
+    comp->ip++;
     return true;
 }
 
 /// @brief  Parse one line
+/// Parsers for push, jmp, etc. move ip forward to next command, so in the end of cycle there's no comp->ip++
 /// @return true on success, false otherwise
 static bool parseCodeLine(compilerData_t *comp) {
     char *line = comp->codeLines[comp->lineIdx];
     #define IP_TO_IDX(comp) ((int)(comp->ip - comp->code))
     int scannedChars = 0;
-    logPrint(L_EXTRA, 0, "-%3d--Parsing line '%s'\n", comp->lineIdx, line);
-    if (checkIfLabel(line, comp->cmd))
+    logPrint(L_EXTRA, 0, "%s:%d: '%s'\n", comp->inName, comp->lineIdx, line);
+    if (checkIsLabel(line))
         return processLabel(comp);
 
     while (sscanf(line, "%s%n", comp->cmd, &scannedChars) == 1) {
-        logPrint(L_EXTRA, 0, "-line before scan: '%s'\n", line);
+        logPrint(L_EXTRA, 0, "\tBefore scan: '%s'\n", line);
         line += scannedChars;
-        logPrint(L_EXTRA, 0, "-line after  scan: '%s'\n", line);
-        logPrint(L_EXTRA, 0, "--ip = %d, Parsing cmd: `%s`\n", IP_TO_IDX(comp), comp->cmd);
+        logPrint(L_EXTRA, 0, "\tAfter  scan: '%s'\n", line);
 
         *comp->ip = (int)cmdToEnum(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
             return false;
-        logPrint(L_EXTRA, 0, "Cmd number: `%d`\n", *comp->ip);
+        logPrint(L_EXTRA, 0, "\tCmd: `%s` -> %d (ip = %d)\n", comp->cmd, *comp->ip, IP_TO_IDX(comp));
 
         switch(*comp->ip) {
-            case CMD_PUSH: {
+            case CMD_PUSH:
+            {
                 //TODO: add '+' between register and number
                 if (!scanPushArgs(comp, &line))
                     return false;
                 break;
             }
-            case CMD_JMP:
-            case CMD_JA: {
-                bool isTextLabel = false;
-                comp->ip++;
-                if (sscanf(line, "%d%n", comp->ip, &scannedChars) != 1) {
-                    sscanf(line, "%s%n", comp->cmd, &scannedChars);
-                    isTextLabel = true;
-                }
-                line += scannedChars;
-                if (isTextLabel)
-                    processJmpLabel(comp);
-                break;
-            }
-            case CMD_POP: {
+            case CMD_POP:
+            {
                 sscanf(line, "%s%n", comp->cmd, &scannedChars);
                 line += scannedChars;
                 comp->ip++;
                 *comp->ip = cmdToReg(comp->cmd);
                 if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
                     return false;
+                comp->ip++;
+                break;
+            }
+            case CMD_JMP: case CMD_JL:
+            case CMD_JA:  case CMD_JAE:
+            case CMD_JB:  case CMD_JBE:
+            case CMD_JE:  case CMD_JNE:
+            case CMD_CALL:
+            {
+                if (!processJmpLabel(comp, &line))
+                    return false;
                 break;
             }
             default:
+            {
+                comp->ip++;
                 break;
+            }
         }
-        comp->ip++;
     }
     return true;
 }
