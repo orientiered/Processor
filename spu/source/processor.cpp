@@ -54,7 +54,7 @@ bool cpuCtor(cpu_t *cpu, const char *program) {
 
     stackCtor(&cpu->stk,     startStackSize);
     stackCtor(&cpu->callStk, startStackSize);
-    for (int i = 0; i < CPU_REGS_COUNT + 1; i++)
+    for (size_t i = 0; i < CPU_REGS_COUNT + 1; i++)
         cpu->regs[i] = 0;
     return true;
 }
@@ -122,7 +122,7 @@ static bool handleJumps(cpu_t *cpu) {
         }
         case CMD_CALL: {
             //pushing pointer to NEXT command
-            stackPush(&cpu->callStk, (int) (cpu->ip - cpu->code) + CMD_LEN + ARG_LEN);
+            stackPush(&cpu->callStk, (size_t) (cpu->ip - cpu->code) + CMD_LEN + ARG_LEN);
             cpu->ip = cpu->code + cpu->ip[CMD_LEN];
             break;
         }
@@ -132,6 +132,13 @@ static bool handleJumps(cpu_t *cpu) {
                 return false;
             }
             cpu->ip = cpu->code + stackPop(&cpu->callStk);
+            break;
+        }
+        case CMD_JL: {
+            if (rand() % 2) {
+                cpu->ip = cpu->code + cpu->ip[CMD_LEN];
+            } else
+                cpu->ip += CMD_LEN + ARG_LEN;
             break;
         }
         default: {
@@ -172,10 +179,6 @@ static bool handleJumps(cpu_t *cpu) {
             makeJump = (val1 != val2);
             break;
         }
-        case CMD_JL: {
-            makeJump = rand() % 2;
-            break;
-        }
         default: {
             logPrint(L_ZERO, 1, "Unknown jump %d\n", *cpu->ip);
             return false;
@@ -206,6 +209,7 @@ static bool handleMath(cpu_t *cpu) {
         }
         case CMD_COS: {
             stackPush(&cpu->stk, (int)cos(val1));
+            break;
         }
         default: {
             twoOperands = true;

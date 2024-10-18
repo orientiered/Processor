@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <assert.h>
 
 #include "cpuCommands.h"
 #include "error_debug.h"
@@ -19,6 +20,8 @@ static enum CMD_OPS cmdToEnum(const char *cmd);
 static bool checkSyntaxError(compilerData_t *comp, enum CMD_OPS error);
 
 static int cmdToReg(const char *cmd) {
+    assert(cmd);
+
     if (strlen(cmd) != 3)
         return CMD_SNTXERR;
     if (cmd[0] != 'r' || cmd[2] != 'x')
@@ -29,6 +32,8 @@ static int cmdToReg(const char *cmd) {
 }
 
 static enum CMD_OPS cmdToEnum(const char *cmd) {
+    assert(cmd);
+
     for (size_t idx = 0; idx < ARRAY_SIZE(CPU_COMMANDS_ARRAY); idx++) {
         if (strcmp(cmd, CPU_COMMANDS_ARRAY[idx].name) == 0)
             return CPU_COMMANDS_ARRAY[idx].op;
@@ -37,6 +42,9 @@ static enum CMD_OPS cmdToEnum(const char *cmd) {
 }
 
 static bool scanPushArgs(compilerData_t *comp, char **line) {
+    assert(comp);
+    assert(line && *line);
+
     int scannedChars = 0;
     int *pushIp = comp->ip;
     comp->ip++;
@@ -62,6 +70,8 @@ static bool scanPushArgs(compilerData_t *comp, char **line) {
 }
 
 static bool checkIsLabel(char *line) {
+    assert(line);
+
     char *symbol = line;
     for (;  isspace(*symbol) && *symbol != '\0'; symbol++) ;
     char *labelStart = symbol;
@@ -78,6 +88,9 @@ static bool checkIsLabel(char *line) {
 }
 
 static label_t *findLabel(char *cmd, Vector_t* labels) {
+    assert(cmd);
+    assert(labels);
+
     if (labels->size == 0) return (label_t *) NULL;
     char *endIdx = (char *)vectorGet(labels, labels->size - 1);
     for (char *idx = (char *)labels->base; idx <= endIdx; idx += labels->elemSize) {
@@ -88,6 +101,8 @@ static label_t *findLabel(char *cmd, Vector_t* labels) {
 }
 
 static bool processLabel(compilerData_t *comp) {
+    assert(comp);
+
     char *line = comp->codeLines[comp->lineIdx];
     sscanf(line, "%s", comp->cmd);
     logPrint(L_EXTRA, 0, "\tProcessing label '%s'\n", comp->cmd);
@@ -154,6 +169,8 @@ static bool processJmpLabel(compilerData_t *comp, char **line) {
 /// Parsers for push, jmp, etc. move ip forward to next command, so in the end of cycle there's no comp->ip++
 /// @return true on success, false otherwise
 static bool parseCodeLine(compilerData_t *comp) {
+    assert(comp);
+
     char *line = comp->codeLines[comp->lineIdx];
     #define IP_TO_IDX(comp) ((int)(comp->ip - comp->code))
     int scannedChars = 0;
@@ -213,6 +230,8 @@ static bool parseCodeLine(compilerData_t *comp) {
 /// @brief  Strip line by any characters from separators
 /// @return Pointer to new end of the line or NULL
 static char *removeCommentFromLine(char *line, const char *separators) {
+    assert(line && separators);
+
     for (char *symbol = line; *symbol != '\0'; symbol++) {
         for (const char *sep = separators; *sep != '\0'; sep++) {
             if (*symbol == *sep) {
@@ -225,6 +244,8 @@ static char *removeCommentFromLine(char *line, const char *separators) {
 }
 
 static bool checkSyntaxError(compilerData_t *comp, enum CMD_OPS error) {
+    assert(comp);
+
     if (error == CMD_SNTXERR) {
         logPrint(L_ZERO, 1, "Syntax error in %s:%zu : unknown command %s\n",
                 comp->inName, comp->lineIdx+1, comp->cmd);
@@ -235,6 +256,8 @@ static bool checkSyntaxError(compilerData_t *comp, enum CMD_OPS error) {
 
 
 static compilerData_t compilerDataCtor(const char *inName, const char *outName) {
+    assert(inName && outName);
+
     compilerData_t comp = {0};
     comp.inName  = inName;
     comp.outName = outName;
@@ -259,6 +282,8 @@ static compilerData_t compilerDataCtor(const char *inName, const char *outName) 
 }
 
 static bool compilerDataDtor(compilerData_t *comp) {
+    assert(comp);
+
     free(comp->code);
     free(comp->codeLines[0]);
     free(comp->codeLines);
@@ -272,6 +297,8 @@ static bool compilerDataDtor(compilerData_t *comp) {
 }
 
 static bool writeCodeToFile(compilerData_t *comp) {
+    assert(comp);
+
     size_t codeSize = size_t(comp->ip - comp->code);
     FILE *outFile = fopen(comp->outName, "wb");
     if (!outFile) return false;
@@ -284,7 +311,30 @@ static bool writeCodeToFile(compilerData_t *comp) {
     return true;
 }
 
+static bool fixupLabels(compilerData_t *comp) {
+    assert(comp);
+
+    logPrint(L_EXTRA, 0, "Resolving fixups: total %d\n", comp->fixup.size);
+    for (size_t idx = 0; idx < comp->fixup.size; idx++) {
+        jmpLabel_t *jmpLabel = vectorGetT(jmpLabel_t*, &comp->fixup, idx);
+        size_t codeIdx = (size_t) (jmpLabel->ip - comp->code);
+        comp->code[codeIdx] = vectorGetT(label_t*, &comp->labels, jmpLabel->index)->ip;
+
+        const char *labelString = vectorGetT(label_t*, &comp->labels, jmpLabel->index)->label;
+        if (comp->code[codeIdx] == POISON_IP) {
+            logPrint(L_ZERO, 1, "Undefined label at %s:%zu : '%s'\n",
+                comp->inName, jmpLabel->lineIdx+1, labelString);
+            return false;
+        } else {
+            logPrint(L_ZERO, 0, "\tFixed label '%s'(ip=%d): %d/%d\n", labelString, codeIdx, idx + 1, comp->fixup.size);
+        }
+    }
+    return true;
+}
+
 bool compile(const char *inName, const char *outName) {
+    assert(inName && outName);
+
     compilerData_t comp = compilerDataCtor(inName, outName);
 
     while(comp.lineIdx < comp.lineCnt) {
@@ -295,16 +345,9 @@ bool compile(const char *inName, const char *outName) {
         comp.lineIdx++;
     }
 
-    for (size_t idx = 0; idx < comp.fixup.size; idx++) {
-        jmpLabel_t *label = (jmpLabel_t *)vectorGet(&comp.fixup, idx);
-        size_t codeIdx = (size_t) (label->ip - comp.code);
-        comp.code[codeIdx] = ((label_t *)vectorGet(&comp.labels, label->index))->ip;
-        if (comp.code[codeIdx] == POISON_IP) {
-            logPrint(L_ZERO, 1, "Undefined label at %s:%zu : '%s'\n",
-                comp.inName, label->lineIdx+1, ((label_t *)vectorGet(&comp.labels, label->index))->label);
-            compilerDataDtor(&comp);
-            return false;
-        }
+    if (!fixupLabels(&comp)) {
+        compilerDataDtor(&comp);
+        return false;
     }
 
     bool compilationResult = writeCodeToFile(&comp);

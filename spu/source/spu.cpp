@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
 
 #include "error_debug.h"
 #include "logger.h"
@@ -24,6 +25,7 @@ int main(int argc, const char *argv[]) {
     if (isFlagSet("-i"))
         fileName = getFlagValue("-i").string_;
 
+    srand(time(NULL));
     cpu_t cpu = {0};
     cpuCtor(&cpu, fileName);
 

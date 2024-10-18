@@ -28,6 +28,8 @@ void *vectorPop(Vector_t *vec);
 
 void *vectorGet(Vector_t *vec, size_t i);
 
+#define vectorGetT(type, vec, i) ((type) vectorGet(vec, i))
+
 void *vectorFind(Vector_t *vec, const void *elem);
 
 void *recalloc(void *base, size_t newSize, size_t oldSize);
