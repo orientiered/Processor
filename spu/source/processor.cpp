@@ -68,24 +68,42 @@ bool cpuDtor(cpu_t *cpu) {
     return true;
 }
 
-static int getPushArg(cpu_t *cpu) {
-    MY_ASSERT((*cpu->ip & 0x0F) == CMD_PUSH, abort());
-    int result = 0;
-    int cmd = *(cpu->ip);
-    if (cmd & MASK_REGISTER) {
-        cpu->ip++;
-        result += cpu->regs[*cpu->ip];
+static int* getPushPopArg(cpu_t *cpu) {
+    MY_ASSERT((*cpu->ip & MASK_CMD) == CMD_PUSH || (*cpu->ip & MASK_CMD) == CMD_POP, abort());
+
+    int* result    = NULL;
+    int  temp      = 0;
+    int  operation = *(cpu->ip);
+    cpu->ip += CMD_LEN;
+
+    if (operation & MASK_REGISTER) {
+        result = &cpu->regs[*cpu->ip];
+        cpu->ip += REG_LEN;
     }
-    if (cmd & MASK_IMMEDIATE) {
-        cpu->ip++;
-        result += *cpu->ip;
+    if (operation & MASK_IMMEDIATE) {
+        temp    += *cpu->ip;
+        cpu->ip += ARG_LEN;
     }
+    if (operation & MASK_MEMORY)
+        result = cpu->ram + *result + temp;
+
+    logPrint(L_EXTRA, 0, "operation %x, \ttemp = %d\n", operation, temp);
+    if ((operation & MASK_CMD) == CMD_PUSH && !(operation &  MASK_MEMORY)) {
+        cpu->regs[R0X] = temp;
+        if (result) cpu->regs[R0X] += *result;
+        result = &cpu->regs[R0X];
+    }
+    if ((operation & MASK_CMD) == CMD_POP  &&  (operation &  MASK_REGISTER)
+                              && !(operation & (MASK_MEMORY | MASK_IMMEDIATE))) {
+        logPrint(L_EXTRA, 0, "\tpopping to register\n");
+    }
+
     return result;
 }
 
 bool cpuDump(cpu_t *cpu) {
     if (getLogLevel() < L_DEBUG) return true;
-    logPrint(L_DEBUG, 0, "------------------CPU DUMP----------------------\n");
+    logPrint(L_DEBUG, 0, "\n------------------CPU DUMP----------------------\n");
     size_t curPosition = ((size_t)(cpu->ip - cpu->code));
     size_t startPos = (curPosition > 10) ? curPosition - 10 : 0;
     size_t endPos = (curPosition + 10 < cpu->size) ? curPosition + 10 : cpu->size;
@@ -108,7 +126,7 @@ bool cpuDump(cpu_t *cpu) {
     logPrint(L_DEBUG, 0, "\n");
 
     logPrint(L_DEBUG, 0, "REGISTERS: rax = %d, rbx = %d, rcx = %d, rdx = %d, rex = %d\n", cpu->regs[RAX], cpu->regs[RBX], cpu->regs[RCX], cpu->regs[RDX], cpu->regs[REX]);
-    logPrint(L_DEBUG, 0, "------------------------------------------------\n");
+    logPrint(L_DEBUG, 0, "------------------------------------------------\n\n");
 
     return true;
 }
@@ -256,14 +274,11 @@ bool cpuRun(cpu_t *cpu) {
         cpuDump(cpu);
         switch(*cpu->ip & MASK_CMD) {
             case CMD_PUSH: {
-                stackPush(&cpu->stk, getPushArg(cpu));
-                cpu->ip += CMD_LEN;
+                stackPush(&cpu->stk, *getPushPopArg(cpu));
                 break;
             }
             case CMD_POP: {
-                cpu->ip += CMD_LEN;
-                cpu->regs[*(cpu->ip)] = stackPop(&cpu->stk);
-                cpu->ip += ARG_LEN;
+                *getPushPopArg(cpu) = stackPop(&cpu->stk);
                 break;
             }
             case CMD_ADD:  case CMD_SUB:

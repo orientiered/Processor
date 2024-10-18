@@ -7,7 +7,7 @@ const int CPU_CMD_VERSION = 2;
 //TODO: use these constants in all ip movements
 const unsigned CMD_LEN = 1;
 const unsigned ARG_LEN = 1;
-
+const unsigned REG_LEN = 1;
 /// Command structure
 /// x x x | y y y y y
 /// M R I | CMD CODE

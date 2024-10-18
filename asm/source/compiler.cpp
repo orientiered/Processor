@@ -41,41 +41,58 @@ static enum CMD_OPS cmdToEnum(const char *cmd) {
     return CMD_SNTXERR;
 }
 
-static bool scanPushArgs(compilerData_t *comp, char **line) {
+static bool scanPushPopArgs(compilerData_t *comp, char **line) {
     assert(comp);
     assert(line && *line);
 
     int scannedChars = 0;
-    int *pushIp = comp->ip;
+    int *cmdPtr = comp->ip;
     comp->ip++;
     if (sscanf(*line, "%d%n", comp->ip, &scannedChars) == 1) {
         *line += scannedChars;
-        *pushIp |= MASK_IMMEDIATE;
+        *cmdPtr |= MASK_IMMEDIATE;
     } else {
         sscanf(*line, "%s%n", comp->cmd, &scannedChars);
         *line += scannedChars;
-        *pushIp |= MASK_REGISTER;
+        *cmdPtr |= MASK_REGISTER;
         *comp->ip = cmdToReg(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
             return false;
         if (sscanf(*line, "%d%n", comp->ip + 1, &scannedChars) == 1) {
             comp->ip++;
             *line += scannedChars;
-            *pushIp |= MASK_IMMEDIATE;
+            *cmdPtr |= MASK_IMMEDIATE;
         }
     }
-    logPrint(L_EXTRA, 0, "\tScanned %d push arguments\n", (int)(comp->ip - pushIp));
+
+    //TODO: static bool checkPopBits()
+    if (*cmdPtr & MASK_CMD == CMD_POP) {
+        bool wrongSyntax = false;
+        if (*cmdPtr & MASK_MEMORY) {
+            if (!(*cmdPtr & MASK_IMMEDIATE) && !(*cmdPtr & MASK_REGISTER))
+                wrongSyntax = true;
+        } else {
+            if (*cmdPtr & MASK_IMMEDIATE || !(*cmdPtr & MASK_REGISTER))
+                wrongSyntax = true;
+        }
+        logPrint(L_ZERO, 1, "Syntax error\n");
+        return false;
+    }
+
+    logPrint(L_EXTRA, 0, "\tScanned %d push arguments\n", (int)(comp->ip - cmdPtr));
     comp->ip++;
     return true;
 }
 
 static bool checkIsLabel(char *line) {
     assert(line);
-
+    //" %[a-zA_Z0-9]%*1[:] "
     char *symbol = line;
-    for (;  isspace(*symbol) && *symbol != '\0'; symbol++) ;
+    for (;  isspace(*symbol) && *symbol != '\0'; symbol++)
+        ;
     char *labelStart = symbol;
-    for (; !isspace(*symbol) && *symbol != '\0'; symbol++) ;
+    for (; !isspace(*symbol) && *symbol != '\0'; symbol++)
+        ;
     bool isLabel = (symbol > (labelStart + 1) && symbol[-1] == ':');
     if (!isLabel)
         return false;
@@ -189,22 +206,11 @@ static bool parseCodeLine(compilerData_t *comp) {
         logPrint(L_EXTRA, 0, "\tCmd: `%s` -> %d (ip = %d)\n", comp->cmd, *comp->ip, IP_TO_IDX(comp));
 
         switch(*comp->ip) {
-            case CMD_PUSH:
+            case CMD_PUSH: case CMD_POP:
             {
                 //TODO: add '+' between register and number
-                if (!scanPushArgs(comp, &line))
+                if (!scanPushPopArgs(comp, &line))
                     return false;
-                break;
-            }
-            case CMD_POP:
-            {
-                sscanf(line, "%s%n", comp->cmd, &scannedChars);
-                line += scannedChars;
-                comp->ip++;
-                *comp->ip = cmdToReg(comp->cmd);
-                if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
-                    return false;
-                comp->ip++;
                 break;
             }
             case CMD_JMP: case CMD_JL:
@@ -305,7 +311,7 @@ static bool writeCodeToFile(compilerData_t *comp) {
     fprintf(outFile, "%s ", CPU_SIGNATURE);
     fprintf(outFile, "%d %zu\n", CPU_CMD_VERSION, codeSize);
     for (size_t idx = 0; idx < codeSize; idx++) {
-        fprintf(outFile, "%x ", comp->code[idx]);
+        fprintf(outFile, "%x ", comp->code[idx]); //TODO: Format
     }
     fclose(outFile);
     return true;

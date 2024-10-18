@@ -24,7 +24,7 @@ typedef struct {
     Vector_t fixup;         ///< array with unresolved labels
 
     char cmd[MAX_CMD_SIZE]; ///< String where words are scanned
-    int *code;              ///< Array with code
+    int *code;              ///< Array with code //TODO: type for code, uint32_t or typedef
     int *ip;                ///< Pointer to current instruction in code
 
     char **codeLines;       ///< Lines of source code
