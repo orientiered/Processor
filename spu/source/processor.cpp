@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <unistd.h>
+//TODO: REMOVE last include
 
 #include "error_debug.h"
 #include "utils.h"
@@ -136,6 +138,8 @@ bool cpuDump(cpu_t *cpu) {
 }
 
 static bool drawRAM(cpu_t *cpu) {
+    // printf("\033[2J");
+    //fflush(stdout);
     for (size_t idx = 0; idx < RAM_SIZE; idx++) {
         if (idx % DRAW_WIDTH == 0)
             putchar('\n');
@@ -146,6 +150,9 @@ static bool drawRAM(cpu_t *cpu) {
         putchar(' ');
     }
     putchar('\n');
+    //printf("\r\033[11A");
+    fflush(stdout);
+    //sleep(1);
     return true;
 }
 

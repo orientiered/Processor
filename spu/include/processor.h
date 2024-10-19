@@ -1,8 +1,8 @@
 #ifndef PROCESSOR_H
 #define PROCESSOR_H
 
-const size_t RAM_SIZE = 100;
-const size_t DRAW_WIDTH = 10;
+const size_t RAM_SIZE = 121;
+const size_t DRAW_WIDTH = 11;
 typedef struct {
     size_t size;
     Stack_t stk;

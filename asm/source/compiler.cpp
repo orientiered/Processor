@@ -74,14 +74,15 @@ static bool scanPushPopArgs(compilerData_t *comp, char **line) {
         *cmdPtr  |= MASK_MEMORY + MASK_IMMEDIATE;
         comp->ip += ARG_LEN;
     } else
-    if (sscanf(*line, " [ %[^ \t\n+] ] %n", comp->cmd, &scannedChars) == 1) {
-        *cmdPtr  |= MASK_MEMORY + MASK_IMMEDIATE + MASK_REGISTER;
+    if (sscanf(*line, " [ %[^] \t\n+] ] %n", comp->cmd, &scannedChars) == 1) {
+        *cmdPtr  |= MASK_MEMORY + MASK_REGISTER;
         *comp->ip = cmdToReg(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
             return false;
         comp->ip += REG_LEN;
     } else
-    if (sscanf(*line, " [ %[^ \t\n+] + %d ] %n", comp->cmd, comp->ip + REG_LEN, &scannedChars) == 2) {
+    /* "%*[ ][%*[ ]%[^ \t\n+]%*[ ]+%*[ ]%d%*[ ]]%n" */
+    if (sscanf(*line, " [ %[^ \t\n+] +  %d ] %n", comp->cmd, comp->ip + REG_LEN, &scannedChars) == 2) {
         *cmdPtr |= MASK_MEMORY + MASK_IMMEDIATE + MASK_REGISTER;
         *comp->ip = cmdToReg(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
