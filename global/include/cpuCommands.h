@@ -10,6 +10,12 @@ typedef struct {
 const char * const CPU_SIGNATURE = "ORI-D-_-";
 const int CPU_CMD_VERSION = 3;
 
+/// Constants for draw command
+const size_t DRAW_HEIGHT = 21;
+const size_t DRAW_WIDTH  = 21;
+//number after [ must be the same as draw height
+const char * const RETURN_ESCAPE_SEQUENCE = "\r\033[21A";
+
 //TODO: use these constants in all ip movements
 const unsigned CMD_LEN = 1;
 const unsigned ARG_LEN = 1;
@@ -48,10 +54,12 @@ enum CMD_OPS {
 
     CMD_CALL,
     CMD_RET,
+    CMD_SLEEP, ///< Sleep for given time in ms
 
     CMD_IN,
     CMD_OUT,
     CMD_DRAW,  ///< Draw image from RAM
+    CMD_DRAWR, ///< Draw image from RAM and move cursor in console to start position
 
     CMD_DUMP,
 };
@@ -83,10 +91,12 @@ const command_t CPU_COMMANDS_ARRAY[] = {
 
     {"call" ,   CMD_CALL    },
     {"ret"  ,   CMD_RET     },
+    {"sleep",   CMD_SLEEP   },
 
     {"in"   ,   CMD_IN      },
     {"out"  ,   CMD_OUT     },
     {"draw" ,   CMD_DRAW    },
+    {"drawr",   CMD_DRAWR   },
 
     {"dump" ,   CMD_DUMP    }
 };

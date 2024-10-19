@@ -54,7 +54,7 @@ static bool checkCmdBits(int *cmdPtr) {
             correctBits = false;
         else if (!MEMORY && (IMMEDIATE || !REGISTER))
             correctBits = false;
-    } else if (cmd == CMD_PUSH) {
+    } else if (cmd == CMD_PUSH || cmd == CMD_SLEEP) {
         if (!IMMEDIATE && !REGISTER)
             correctBits = false;
     }
@@ -62,7 +62,7 @@ static bool checkCmdBits(int *cmdPtr) {
     return correctBits;
 }
 
-static bool scanPushPopArgs(compilerData_t *comp, char **line) {
+static bool scanArgs(compilerData_t *comp, char **line) {
     assert(comp);
     assert(line && *line);
 
@@ -257,10 +257,9 @@ static bool parseCodeLine(compilerData_t *comp) {
         logPrint(L_EXTRA, 0, "\tCmd: `%s` -> %d (ip = 0x%X)\n", comp->cmd, *comp->ip, IP_TO_IDX(comp));
 
         switch(*comp->ip) {
-            case CMD_PUSH: case CMD_POP:
+            case CMD_PUSH: case CMD_POP: case CMD_SLEEP:
             {
-                //TODO: add '+' between register and number
-                if (!scanPushPopArgs(comp, &line))
+                if (!scanArgs(comp, &line))
                     return false;
                 break;
             }

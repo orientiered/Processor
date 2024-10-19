@@ -71,37 +71,40 @@ bool cpuDtor(cpu_t *cpu) {
     return true;
 }
 
-static int* getPushPopArg(cpu_t *cpu) {
-    MY_ASSERT((*cpu->ip & MASK_CMD) == CMD_PUSH || (*cpu->ip & MASK_CMD) == CMD_POP, abort());
+static int* getArgs(cpu_t *cpu) {
+    MY_ASSERT(cpu, abort());
+    //MY_ASSERT((*cpu->ip & MASK_CMD) == CMD_PUSH || (*cpu->ip & MASK_CMD) == CMD_POP, abort());
 
     int* result    = NULL;
     int  temp      = 0;
-    int  operation = *(cpu->ip);
+    int  command   = *(cpu->ip) & MASK_CMD;
+    bool REGISTER  = *(cpu->ip) & MASK_REGISTER;
+    bool IMMEDIATE = *(cpu->ip) & MASK_IMMEDIATE;
+    bool MEMORY    = *(cpu->ip) & MASK_MEMORY;
     cpu->ip += CMD_LEN;
 
-    if (operation & MASK_REGISTER) {
+    if (REGISTER) {
         result   = &cpu->regs[*cpu->ip];
         cpu->ip += REG_LEN;
     }
-    if (operation & MASK_IMMEDIATE) {
+    if (IMMEDIATE) {
         temp    += *cpu->ip;
         cpu->ip += ARG_LEN;
     }
-    if (operation & MASK_MEMORY) {
+    if (MEMORY) {
         if (result != NULL)
             result = cpu->ram + *result + temp;
         else
             result = cpu->ram + temp;
     }
 
-    logPrint(L_EXTRA, 0, "operation %x, \ttemp = %d\n", operation, temp);
-    if ((operation & MASK_CMD) == CMD_PUSH && !(operation &  MASK_MEMORY)) {
+    logPrint(L_EXTRA, 0, "operation %x, \ttemp = %d\n", command, temp);
+    if ((command == CMD_PUSH || command == CMD_SLEEP) && !MEMORY) {
         cpu->regs[R0X] = temp;
         if (result) cpu->regs[R0X] += *result;
         result = &cpu->regs[R0X];
     }
-    if ((operation & MASK_CMD) == CMD_POP  &&  (operation &  MASK_REGISTER)
-                              && !(operation & (MASK_MEMORY | MASK_IMMEDIATE))) {
+    if (command == CMD_POP && REGISTER && !MEMORY && !IMMEDIATE) {
         logPrint(L_EXTRA, 0, "\tpopping to register\n");
     }
 
@@ -139,25 +142,20 @@ bool cpuDump(cpu_t *cpu) {
 }
 
 static bool drawRAM(cpu_t *cpu) {
-    // printf("\033[2J");
-    //fflush(stdout);
-    for (size_t idx = 0; idx < RAM_SIZE; idx++) {
-        if (idx % DRAW_WIDTH == 0)
-            putchar('\n');
-        if (cpu->ram[idx] == 0)
-            putchar('.');
-        else
-            putchar('*');
-        putchar(' ');
+    MY_ASSERT(cpu);
+    for (size_t row = 0; row < DRAW_HEIGHT; row++) {
+        for (size_t col = 0; col < DRAW_WIDTH; col++) {
+            char c = (cpu->ram[row * DRAW_WIDTH + col] == 0) ? '.' : '*';
+            putchar(c);
+            putchar(' '); //better width/height ratio
+        }
+        putchar('\n');
     }
-    putchar('\n');
-    //printf("\r\033[11A");
-    fflush(stdout);
-    //sleep(1);
     return true;
 }
 
 static bool handleJumps(cpu_t *cpu) {
+    MY_ASSERT(cpu);
     bool conditionalJump = false;
     switch(*cpu->ip & MASK_CMD) {
         case CMD_JMP: {
@@ -300,11 +298,11 @@ bool cpuRun(cpu_t *cpu) {
         cpuDump(cpu);
         switch(*cpu->ip & MASK_CMD) {
             case CMD_PUSH: {
-                stackPush(&cpu->stk, *getPushPopArg(cpu));
+                stackPush(&cpu->stk, *getArgs(cpu));
                 break;
             }
             case CMD_POP: {
-                *getPushPopArg(cpu) = stackPop(&cpu->stk);
+                *getArgs(cpu) = stackPop(&cpu->stk);
                 break;
             }
             case CMD_ADD:  case CMD_SUB:
@@ -314,6 +312,11 @@ bool cpuRun(cpu_t *cpu) {
             {
                 if (!handleMath(cpu))
                     return false;
+                break;
+            }
+            case CMD_SLEEP: {
+                //sleeping *getArgs(cpu) ms
+                usleep(*getArgs(cpu) * 1000);
                 break;
             }
             case CMD_JMP:  case CMD_JL:
@@ -342,6 +345,13 @@ bool cpuRun(cpu_t *cpu) {
             case CMD_DRAW: {
                 drawRAM(cpu);
                 cpu->ip += CMD_LEN;
+                break;
+            }
+            case CMD_DRAWR: {
+                drawRAM(cpu);
+                cpu->ip += CMD_LEN;
+                printf(RETURN_ESCAPE_SEQUENCE);
+                fflush(stdout);
                 break;
             }
             case CMD_DUMP: {
