@@ -1,7 +1,13 @@
 #ifndef CPU_COMMANDS
 #define CPU_COMMANDS
 
-const char * const CPU_SIGNATURE = "ORI-D";
+typedef struct {
+    uint64_t signature;
+    uint32_t cmdVersion;
+    uint32_t size;
+} programHeader_t;
+
+const char * const CPU_SIGNATURE = "ORI-D-_-";
 const int CPU_CMD_VERSION = 3;
 
 //TODO: use these constants in all ip movements

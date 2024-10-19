@@ -2,11 +2,8 @@
 # 19.10.24
 
     in
-    pop     rex
-    draw
-
-    push    0
     pop     rax
+    draw
 
     call    fillCircle:
     draw
@@ -36,7 +33,7 @@ fillCircle:
         add
         pop     rdx     ; rdx = 11*rbx + rcx
 
-        push    rex
+        push    rax
 
         push    rbx + -5
         push    rbx + -5

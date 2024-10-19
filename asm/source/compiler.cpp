@@ -356,11 +356,15 @@ static bool compilerDataDtor(compilerData_t *comp) {
 static bool writeCodeToFile(compilerData_t *comp) {
     assert(comp);
 
-    size_t codeSize = size_t(comp->ip - comp->code);
     FILE *outFile = fopen(comp->outName, "wb");
     if (!outFile) return false;
-    fprintf(outFile, "%s ", CPU_SIGNATURE);
-    fprintf(outFile, "%d %zu\n", CPU_CMD_VERSION, codeSize);
+
+    size_t codeSize = size_t(comp->ip - comp->code);
+    programHeader_t hdr = {*(const uint64_t *) CPU_SIGNATURE, CPU_CMD_VERSION, codeSize};
+    fwrite(&hdr, 1, sizeof(hdr), outFile);
+    fprintf(outFile, "\n");
+    // fprintf(outFile, "%s ", CPU_SIGNATURE);
+    // fprintf(outFile, "%d %zu\n", CPU_CMD_VERSION, codeSize);
     for (size_t idx = 0; idx < codeSize; idx++) {
         fprintf(outFile, "%x ", comp->code[idx]); //TODO: Format
     }

@@ -31,21 +31,22 @@ bool cpuCtor(cpu_t *cpu, const char *program) {
         return false;
     }
 
-    char signature[50] = "";
-    fscanf(programFile, "%s", signature);
-    if (strcmp(signature, CPU_SIGNATURE) != 0) {
-        logPrint(L_ZERO, 1, "Wrong code signature: expected '%s', got '%s'\n", CPU_SIGNATURE, signature);
+    programHeader_t hdr = {};
+    if (fread(&hdr, sizeof(hdr), 1, programFile) != 1) {
+        logPrint(L_ZERO, 1, "Failed to read header\n");
         return false;
     }
 
-    int cmdVersion = 0;
-    fscanf(programFile, "%d", &cmdVersion);
-    if (cmdVersion != CPU_CMD_VERSION) {
-        logPrint(L_ZERO, 1, "Wrong command set version: expected %d, got %d\n", CPU_CMD_VERSION, cmdVersion);
+    if (hdr.signature != *(const uint64_t *) CPU_SIGNATURE) {
+        logPrint(L_ZERO, 1, "Wrong code signature: expected '%s', got '%s'\n", CPU_SIGNATURE, &hdr.signature);
         return false;
     }
 
-    fscanf(programFile, "%zu", &cpu->size);
+    if (hdr.cmdVersion != CPU_CMD_VERSION) {
+        logPrint(L_ZERO, 1, "Wrong command set version: expected %d, got %d\n", CPU_CMD_VERSION, hdr.cmdVersion);
+        return false;
+    }
+    cpu->size = hdr.size;
     cpu->code = (int *) calloc(cpu->size, sizeof(int));
     cpu->ip = cpu->code;
     logPrint(L_DEBUG, 0, "Code size = %zu\n", cpu->size);

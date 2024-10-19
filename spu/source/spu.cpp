@@ -11,6 +11,8 @@
 #include "cpuCommands.h"
 #include "processor.h"
 
+const int CTOR_ERROR = 1;
+
 int main(int argc, const char *argv[]) {
     logOpen();
     setLogLevel(L_ZERO);
@@ -28,8 +30,10 @@ int main(int argc, const char *argv[]) {
 
     srand(time(NULL));
     cpu_t cpu = {0};
-    if (!cpuCtor(&cpu, fileName))
+    if (!cpuCtor(&cpu, fileName)) {
         logPrint(L_ZERO, 1, "Terminating\n");
+        return CTOR_ERROR;
+    }
 
     cpuRun(&cpu);
     cpuDtor(&cpu);

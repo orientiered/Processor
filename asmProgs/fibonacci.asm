@@ -9,7 +9,7 @@ push 0 pop rcx      ; Cnt of printed numbers
 
 push    rax         ; Printing fib[i]
 out
-push    rcx 1       ; i++
+push    rcx +1       ; i++
 pop     rcx
 
 push    rbx         ; Stack: fib[i-1]
