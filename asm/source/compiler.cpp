@@ -41,46 +41,92 @@ static enum CMD_OPS cmdToEnum(const char *cmd) {
     return CMD_SNTXERR;
 }
 
+static bool checkCmdBits(int *cmdPtr) {
+    bool correctBits = true;
+    int cmd = *cmdPtr & MASK_CMD;
+    bool IMMEDIATE = *cmdPtr & MASK_IMMEDIATE,
+         REGISTER  = *cmdPtr & MASK_REGISTER,
+         MEMORY    = *cmdPtr & MASK_MEMORY;
+
+    if (cmd == CMD_POP) {
+        // M*!I*!R or !M*(I or !R)
+        if      ( MEMORY && !IMMEDIATE && !REGISTER)
+            correctBits = false;
+        else if (!MEMORY && (IMMEDIATE || !REGISTER))
+            correctBits = false;
+    } else if (cmd == CMD_PUSH) {
+        if (!IMMEDIATE && !REGISTER)
+            correctBits = false;
+    }
+
+    return correctBits;
+}
+
 static bool scanPushPopArgs(compilerData_t *comp, char **line) {
     assert(comp);
     assert(line && *line);
 
     int scannedChars = 0;
     int *cmdPtr = comp->ip;
-    comp->ip++;
+    comp->ip += CMD_LEN;
+
+    if (sscanf(*line, " [ %d ] %n", comp->ip, &scannedChars) == 1) {
+        *cmdPtr  |= MASK_MEMORY + MASK_IMMEDIATE;
+        comp->ip += ARG_LEN;
+    } else
+    if (sscanf(*line, " [ %[^ \t\n+] ] %n", comp->cmd, &scannedChars) == 1) {
+        *cmdPtr  |= MASK_MEMORY + MASK_IMMEDIATE + MASK_REGISTER;
+        *comp->ip = cmdToReg(comp->cmd);
+        if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
+            return false;
+        comp->ip += REG_LEN;
+    } else
+    if (sscanf(*line, " [ %[^ \t\n+] + %d ] %n", comp->cmd, comp->ip + REG_LEN, &scannedChars) == 2) {
+        *cmdPtr |= MASK_MEMORY + MASK_IMMEDIATE + MASK_REGISTER;
+        *comp->ip = cmdToReg(comp->cmd);
+        if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
+            return false;
+        comp->ip += REG_LEN + ARG_LEN;
+    } else
     if (sscanf(*line, "%d%n", comp->ip, &scannedChars) == 1) {
-        *line += scannedChars;
         *cmdPtr |= MASK_IMMEDIATE;
-    } else {
-        sscanf(*line, "%s%n", comp->cmd, &scannedChars);
-        *line += scannedChars;
+        comp->ip += ARG_LEN;
+    } else
+    if (sscanf(*line, " %[^ \t\n+] + %d %n", comp->cmd, comp->ip + REG_LEN, &scannedChars) == 2) {
+        *cmdPtr |= MASK_REGISTER + MASK_IMMEDIATE;
+        *comp->ip = cmdToReg(comp->cmd);
+        if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
+            return false;
+        comp->ip += REG_LEN + ARG_LEN;
+    } else
+    if (sscanf(*line, " %s %n", comp->cmd, &scannedChars) == 1) {
         *cmdPtr |= MASK_REGISTER;
         *comp->ip = cmdToReg(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
             return false;
-        if (sscanf(*line, "%d%n", comp->ip + 1, &scannedChars) == 1) {
-            comp->ip++;
-            *line += scannedChars;
-            *cmdPtr |= MASK_IMMEDIATE;
-        }
+        comp->ip += REG_LEN;
     }
 
-    //TODO: static bool checkPopBits()
-    if (*cmdPtr & MASK_CMD == CMD_POP) {
-        bool wrongSyntax = false;
-        if (*cmdPtr & MASK_MEMORY) {
-            if (!(*cmdPtr & MASK_IMMEDIATE) && !(*cmdPtr & MASK_REGISTER))
-                wrongSyntax = true;
-        } else {
-            if (*cmdPtr & MASK_IMMEDIATE || !(*cmdPtr & MASK_REGISTER))
-                wrongSyntax = true;
-        }
-        logPrint(L_ZERO, 1, "Syntax error\n");
+    *line += scannedChars;
+
+    if (!checkCmdBits(cmdPtr)) {
+        logPrint(L_ZERO, 1, "Syntax error in %s:%zu : ",
+                comp->inName, comp->lineIdx+1);
+        if ((*cmdPtr & MASK_CMD) == CMD_PUSH)
+            logPrint(L_ZERO, 1, "wrong push arguments:\n");
+        else
+            logPrint(L_ZERO, 1, "wrong pop  arguments:\n");
+
+        logPrint(L_ZERO, 1, "\tMEMORY = %d, REGISTER = %d, IMMEDIATE = %d\n", bool(*cmdPtr & MASK_MEMORY),
+                                                                              bool(*cmdPtr & MASK_REGISTER),
+                                                                              bool(*cmdPtr & MASK_IMMEDIATE));
         return false;
     }
 
-    logPrint(L_EXTRA, 0, "\tScanned %d push arguments\n", (int)(comp->ip - cmdPtr));
-    comp->ip++;
+    logPrint(L_EXTRA, 0, "\tip =  0x%X\n", (size_t)(comp->ip - comp->code));
+    logPrint(L_EXTRA, 0, "\tMEMORY = %d, REGISTER = %d, IMMEDIATE = %d\n", bool(*cmdPtr & MASK_MEMORY),
+                                                                           bool(*cmdPtr & MASK_REGISTER),
+                                                                           bool(*cmdPtr & MASK_IMMEDIATE));
     return true;
 }
 
@@ -101,6 +147,10 @@ static bool checkIsLabel(char *line) {
     *symbol = '\0';
     logPrint(L_EXTRA, 0, "\t'%s' is considered as label\n", labelStart);
     *symbol = temp;
+    // if (sscanf(line, " %[a-zA-Z0-9_]%*1[:] ", cmd) == 1) {
+    //     logPrint(L_EXTRA, 0, "\t'%s' is considered as label\n", cmd);
+    //     return true;
+    // }
     return true;
 }
 
@@ -147,25 +197,25 @@ static bool processJmpLabel(compilerData_t *comp, char **line) {
 
     int scannedChars = 0;
     if (sscanf(*line, "%d%n", comp->ip, &scannedChars) == 1) {
-        logPrint(L_EXTRA, 0, "ip = %d\n", *comp->ip);
+        logPrint(L_EXTRA, 0, "ip = 0x%X\n", *comp->ip);
         comp->ip++;
         *line += scannedChars;
         return true;
     }
 
     sscanf(*line, "%s%n", comp->cmd, &scannedChars);
+    *line += scannedChars;
     logPrint(L_EXTRA, 0, "label = '%s'\n", comp->cmd);
     if (!checkIsLabel(comp->cmd)) {
         logPrint(L_ZERO, 1, "Syntax error in %s:%zu : bad label in jump: '%s'\n",
             comp->inName, comp->lineIdx+1, comp->cmd);
         return false;
     }
-    *line += scannedChars;
 
     label_t *label = findLabel(comp->cmd, &comp->labels);
     if (label != NULL) {
         *comp->ip = label->ip;
-        logPrint(L_EXTRA, 0, "\t\tFound in labels, ip = %d\n", label->ip);
+        logPrint(L_EXTRA, 0, "\t\tFound in labels, ip = 0x%X\n", label->ip);
         if (label->ip == POISON_IP) {
             jmpLabel_t jmpLabel = {comp->ip, comp->labels.size - 1, comp->lineIdx};
             vectorPush(&comp->fixup,  &jmpLabel);
@@ -173,7 +223,7 @@ static bool processJmpLabel(compilerData_t *comp, char **line) {
     } else {
         label_t newLabel = {-1, strdup(comp->cmd)};
         vectorPush(&comp->labels, &newLabel);
-        logPrint(L_EXTRA, 0, "\t\tPush in labels, idx = %d, ip = %d, line = %zu\n",
+        logPrint(L_EXTRA, 0, "\t\tPush in labels, idx = %d, ip = 0x%X, line = %zu\n",
                              comp->labels.size - 1, (int)(comp->ip - comp->code), comp->lineIdx);
         jmpLabel_t jmpLabel = {comp->ip, comp->labels.size - 1, comp->lineIdx};
         vectorPush(&comp->fixup,  &jmpLabel);
@@ -196,14 +246,14 @@ static bool parseCodeLine(compilerData_t *comp) {
         return processLabel(comp);
 
     while (sscanf(line, "%s%n", comp->cmd, &scannedChars) == 1) {
-        logPrint(L_EXTRA, 0, "\tBefore scan: '%s'\n", line);
+        //logPrint(L_EXTRA, 0, "\tBefore scan: '%s'\n", line);
         line += scannedChars;
-        logPrint(L_EXTRA, 0, "\tAfter  scan: '%s'\n", line);
+        //logPrint(L_EXTRA, 0, "\tAfter  scan: '%s'\n", line);
 
         *comp->ip = (int)cmdToEnum(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
             return false;
-        logPrint(L_EXTRA, 0, "\tCmd: `%s` -> %d (ip = %d)\n", comp->cmd, *comp->ip, IP_TO_IDX(comp));
+        logPrint(L_EXTRA, 0, "\tCmd: `%s` -> %d (ip = 0x%X)\n", comp->cmd, *comp->ip, IP_TO_IDX(comp));
 
         switch(*comp->ip) {
             case CMD_PUSH: case CMD_POP:
@@ -332,7 +382,7 @@ static bool fixupLabels(compilerData_t *comp) {
                 comp->inName, jmpLabel->lineIdx+1, labelString);
             return false;
         } else {
-            logPrint(L_ZERO, 0, "\tFixed label '%s'(ip=%d): %d/%d\n", labelString, codeIdx, idx + 1, comp->fixup.size);
+            logPrint(L_ZERO, 0, "\t(%d/%d) (ip=0x%.4X) Fixed label '%s'\n", idx + 1, comp->fixup.size, codeIdx, labelString);
         }
     }
     return true;

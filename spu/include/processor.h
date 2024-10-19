@@ -2,6 +2,7 @@
 #define PROCESSOR_H
 
 const size_t RAM_SIZE = 100;
+const size_t DRAW_WIDTH = 10;
 typedef struct {
     size_t size;
     Stack_t stk;

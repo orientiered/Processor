@@ -33,7 +33,7 @@ Factorial:
 Factorial_main:
     push    rax
 
-    push    rax -1
+    push    rax + -1
     pop     rax
     call    Factorial:
 

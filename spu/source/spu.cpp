@@ -27,7 +27,8 @@ int main(int argc, const char *argv[]) {
 
     srand(time(NULL));
     cpu_t cpu = {0};
-    cpuCtor(&cpu, fileName);
+    if (!cpuCtor(&cpu, fileName))
+        logPrint(L_ZERO, 1, "Terminating\n");
 
     cpuRun(&cpu);
     cpuDtor(&cpu);

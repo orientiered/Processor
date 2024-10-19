@@ -2,7 +2,7 @@
 #define CPU_COMMANDS
 
 const char * const CPU_SIGNATURE = "ORI-D";
-const int CPU_CMD_VERSION = 2;
+const int CPU_CMD_VERSION = 3;
 
 //TODO: use these constants in all ip movements
 const unsigned CMD_LEN = 1;
@@ -45,6 +45,7 @@ enum CMD_OPS {
 
     CMD_IN,
     CMD_OUT,
+    CMD_DRAW,  ///< Draw image from RAM
 
     CMD_DUMP,
 };
@@ -79,6 +80,7 @@ const command_t CPU_COMMANDS_ARRAY[] = {
 
     {"in"   ,   CMD_IN      },
     {"out"  ,   CMD_OUT     },
+    {"draw" ,   CMD_DRAW    },
 
     {"dump" ,   CMD_DUMP    }
 };

@@ -77,15 +77,19 @@ static int* getPushPopArg(cpu_t *cpu) {
     cpu->ip += CMD_LEN;
 
     if (operation & MASK_REGISTER) {
-        result = &cpu->regs[*cpu->ip];
+        result   = &cpu->regs[*cpu->ip];
         cpu->ip += REG_LEN;
     }
     if (operation & MASK_IMMEDIATE) {
         temp    += *cpu->ip;
         cpu->ip += ARG_LEN;
     }
-    if (operation & MASK_MEMORY)
-        result = cpu->ram + *result + temp;
+    if (operation & MASK_MEMORY) {
+        if (result != NULL)
+            result = cpu->ram + *result + temp;
+        else
+            result = cpu->ram + temp;
+    }
 
     logPrint(L_EXTRA, 0, "operation %x, \ttemp = %d\n", operation, temp);
     if ((operation & MASK_CMD) == CMD_PUSH && !(operation &  MASK_MEMORY)) {
@@ -128,6 +132,20 @@ bool cpuDump(cpu_t *cpu) {
     logPrint(L_DEBUG, 0, "REGISTERS: rax = %d, rbx = %d, rcx = %d, rdx = %d, rex = %d\n", cpu->regs[RAX], cpu->regs[RBX], cpu->regs[RCX], cpu->regs[RDX], cpu->regs[REX]);
     logPrint(L_DEBUG, 0, "------------------------------------------------\n\n");
 
+    return true;
+}
+
+static bool drawRAM(cpu_t *cpu) {
+    for (size_t idx = 0; idx < RAM_SIZE; idx++) {
+        if (idx % DRAW_WIDTH == 0)
+            putchar('\n');
+        if (cpu->ram[idx] == 0)
+            putchar('.');
+        else
+            putchar('*');
+        putchar(' ');
+    }
+    putchar('\n');
     return true;
 }
 
@@ -310,6 +328,11 @@ bool cpuRun(cpu_t *cpu) {
                 int val = 0;
                 scanf("%d", &val);
                 stackPush(&cpu->stk, val);
+                cpu->ip += CMD_LEN;
+                break;
+            }
+            case CMD_DRAW: {
+                drawRAM(cpu);
                 cpu->ip += CMD_LEN;
                 break;
             }
