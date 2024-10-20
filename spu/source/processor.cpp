@@ -158,7 +158,7 @@ bool cpuDump(cpu_t *cpu) {
 }
 
 static bool drawRAM(cpu_t *cpu) {
-    MY_ASSERT(cpu);
+    MY_ASSERT(cpu, abort());
     for (size_t row = 0; row < DRAW_HEIGHT; row++) {
         for (size_t col = 0; col < DRAW_WIDTH; col++) {
             char c = (cpu->ram[row * DRAW_WIDTH + col] == 0) ? '.' : '*';
@@ -171,7 +171,7 @@ static bool drawRAM(cpu_t *cpu) {
 }
 
 static bool handleJumps(cpu_t *cpu) {
-    MY_ASSERT(cpu);
+    MY_ASSERT(cpu, abort());
     bool conditionalJump = false;
     switch(*cpu->ip & MASK_CMD) {
         case CMD_JMP: {

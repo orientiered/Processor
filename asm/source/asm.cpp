@@ -16,7 +16,7 @@ int main(int argc, const char *argv[]) {
 
     registerFlag(TYPE_STRING, "-i", "--input", "Input file name");
     registerFlag(TYPE_STRING, "-o", "--o", "Output file name");
-    registerFlag(TYPE_BLANK,  "-d", "--debug", "Disable buffering and set max log level");
+    registerFlag(TYPE_INT,    "-d", "--debug", "Disable buffering and set max log level");
 
     if (processArgs(argc, argv) != SUCCESS)
         return 1;
@@ -27,8 +27,15 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
     if (isFlagSet("-d")) {
-        logDisableBuffering();
-        setLogLevel(L_EXTRA);
+        int dbgLevel = getFlagValue("-d").int_;
+        if (dbgLevel == 1) {
+            setLogLevel(L_DEBUG);
+            logDisableBuffering();
+        }
+        else if (dbgLevel >= 2) {
+            setLogLevel(L_EXTRA);
+            logDisableBuffering();
+        }
     }
 
     const char *inputName = getFlagValue("-i").string_;

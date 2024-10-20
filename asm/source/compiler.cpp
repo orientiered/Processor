@@ -70,25 +70,23 @@ static bool scanArgs(compilerData_t *comp, char **line) {
     int scannedChars = 0;
     int *cmdPtr = comp->ip;
     comp->ip += CMD_LEN;
-
-    if (sscanf(*line, " [ %d ] %n", comp->ip, &scannedChars) == 1) {
+    if (sscanf(*line, " [ %d ] %n", comp->ip, &scannedChars) == 1 && scannedChars != 0) {
         *cmdPtr  |= MASK_MEMORY + MASK_IMMEDIATE;
         comp->ip += ARG_LEN;
     } else
-    if (sscanf(*line, " [ %[^] \t\n+] ] %n", comp->cmd, &scannedChars) == 1) {
+    if (sscanf(*line, " [ %[^] \t\n+] ] %n", comp->cmd, &scannedChars) == 1 && scannedChars != 0) {
         *cmdPtr  |= MASK_MEMORY + MASK_REGISTER;
         *comp->ip = cmdToReg(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
             return false;
         comp->ip += REG_LEN;
     } else
-    /* "%*[ ][%*[ ]%[^ \t\n+]%*[ ]+%*[ ]%d%*[ ]]%n" */
-    if (sscanf(*line, " [ %[^ \t\n+] +  %d ] %n", comp->cmd, comp->ip + REG_LEN, &scannedChars) == 2) {
-        *cmdPtr |= MASK_MEMORY + MASK_IMMEDIATE + MASK_REGISTER;
-        *comp->ip = cmdToReg(comp->cmd);
-        if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
-            return false;
-        comp->ip += REG_LEN + ARG_LEN;
+    if (sscanf(*line, " [ %[^] +\t] + %d ] %n", comp->cmd, comp->ip + REG_LEN, &scannedChars) == 2 && scannedChars != 0) {
+            *cmdPtr |= MASK_MEMORY + MASK_IMMEDIATE + MASK_REGISTER;
+            *comp->ip = cmdToReg(comp->cmd);
+            if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
+                return false;
+            comp->ip += REG_LEN + ARG_LEN;
     } else
     if (sscanf(*line, "%d%n", comp->ip, &scannedChars) == 1) {
         *cmdPtr |= MASK_IMMEDIATE;
@@ -304,7 +302,7 @@ static bool checkSyntaxError(compilerData_t *comp, enum CMD_OPS error) {
     assert(comp);
 
     if (error == CMD_SNTXERR) {
-        logPrint(L_ZERO, 1, "Syntax error in %s:%zu : unknown command %s\n",
+        logPrint(L_ZERO, 1, "\nSyntax error in %s:%zu : unknown command %s\n",
                 comp->inName, comp->lineIdx+1, comp->cmd);
         return true;
     }
@@ -323,7 +321,8 @@ static compilerData_t compilerDataCtor(const char *inName, const char *outName) 
     comp.fixup  = vectorCtor(0, sizeof(jmpLabel_t));
 
     memset(&comp.cmd, 0, MAX_CMD_SIZE);
-    comp.code = (int *) calloc(MAX_CODE_SIZE, sizeof(int));
+    comp.code = (int *) calloc(START_CODE_SIZE, sizeof(int));
+    comp.reserved = START_CODE_SIZE;
     comp.ip = comp.code;
 
     comp.codeLines = readLinesFromFile(inName, &comp.lineCnt);
@@ -398,22 +397,50 @@ static bool fixupLabels(compilerData_t *comp) {
     return true;
 }
 
+static bool expandCodeArray(compilerData_t *comp) {
+    MY_ASSERT(comp, abort());
+    size_t curSize = size_t(comp->ip - comp->code);
+    logPrint(L_DEBUG, 0, "Expanding code array:\n");
+    logPrint(L_DEBUG, 0, "\tCurrent size = %zu, reserved = %zu\n", curSize, comp->reserved);
+
+    comp->reserved *= 2;
+    logPrint(L_DEBUG, 0, "\tNew reserved = %zu\n", comp->reserved);
+
+    int *newCode = (int *) realloc(comp->code, comp->reserved * sizeof(int));
+    if (!newCode) {
+        logPrint(L_ZERO, 1, "Error occurred while expanding code array\n");
+        return false;
+    }
+    comp->code = newCode;
+    comp->ip   = comp->code + curSize;
+    memset(comp->code + curSize, 0, comp->reserved - curSize);
+    return true;
+}
+
 bool compile(const char *inName, const char *outName) {
     assert(inName && outName);
 
     logPrint(L_ZERO, 1, "--Reading program--\n");
     compilerData_t comp = compilerDataCtor(inName, outName);
 
-    const size_t dotsCount = 40, skipCount = 20;
+    const size_t dotsCount = 40, skipCount = 16;
     logPrint(L_ZERO, 1, "--Parsing lines--\n");
+    clock_t compilingTime = 0;
+    clock_t startTime = clock();
+
     while(comp.lineIdx < comp.lineCnt) {
         if (!parseCodeLine(&comp)) {
             compilerDataDtor(&comp);
             return false;
         }
+
+        if (size_t(comp.ip - comp.code) >= (comp.reserved - RESIZE_DELTA))
+            expandCodeArray(&comp);
+
         comp.lineIdx++;
+        compilingTime = clock() - startTime;
         if (comp.lineIdx % skipCount == 0)
-            percentageBar(comp.lineIdx, comp.lineCnt, dotsCount, 0);
+            percentageBar(comp.lineIdx, comp.lineCnt, dotsCount, compilingTime);
     }
 
     logPrint(L_ZERO, 1, "\n--Fixing labels--\n");

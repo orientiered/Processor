@@ -73,15 +73,19 @@ int main() {
     readFrame(oldFrame, 1);
     writeFrame(out, NULL, oldFrame);
 
+    clock_t convertingTime = 0, startTime = clock();
+
     for (size_t idx = 1; idx < FRAMES_COUNT; idx++) {
         readFrame (curFrame, idx + 1);
+        // writeFrame(out, oldFrame, curFrame);
         writeFrame(out, oldFrame, curFrame);
 
         uint8_t *temp = oldFrame;
         oldFrame = curFrame;
         curFrame = temp;
 
-        percentageBar(idx + 1, FRAMES_COUNT, 40, clock());
+        convertingTime = clock() - startTime;
+        percentageBar(idx + 1, FRAMES_COUNT, 40, convertingTime);
     }
     printf("\n");
     fprintf(out, "hlt\n");

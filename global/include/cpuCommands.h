@@ -55,6 +55,7 @@ enum CMD_OPS {
     CMD_CALL,
     CMD_RET,
     CMD_SLEEP, ///< Sleep for given time in ms
+    CMD_TIME,  ///< Pushes in stack time from start of program
 
     CMD_IN,
     CMD_OUT,
@@ -92,6 +93,7 @@ const command_t CPU_COMMANDS_ARRAY[] = {
     {"call" ,   CMD_CALL    },
     {"ret"  ,   CMD_RET     },
     {"sleep",   CMD_SLEEP   },
+    {"time" ,   CMD_TIME    },
 
     {"in"   ,   CMD_IN      },
     {"out"  ,   CMD_OUT     },
