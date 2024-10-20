@@ -4,6 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <unistd.h>
+#include <time.h>
 //TODO: REMOVE last include
 
 #include "error_debug.h"
@@ -310,6 +311,7 @@ static bool handleMath(cpu_t *cpu) {
 bool cpuRun(cpu_t *cpu) {
     bool run = true;
     logPrintWithTime(L_DEBUG, 0, "Entered cpuRun\n");
+    clock_t startTime = clock();
     while (run) {
         cpuDump(cpu);
         switch(*cpu->ip & MASK_CMD) {
@@ -343,6 +345,12 @@ bool cpuRun(cpu_t *cpu) {
             {
                 if (!handleJumps(cpu))
                     return false;
+                break;
+            }
+            case CMD_TIME: {
+                logPrint(L_ZERO, 1, "Current time %u, %ld, %ld\n", (clock() - startTime) / CLOCKS_PER_SEC, CLOCKS_PER_SEC, clock() - startTime);
+                stackPush(&cpu->stk, (clock() - startTime) / CLOCKS_PER_SEC);
+                cpu->ip += CMD_LEN;
                 break;
             }
             case CMD_OUT: {

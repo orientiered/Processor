@@ -1,6 +1,8 @@
 # Calculate factorial of given number
 
 BEGIN:
+    time
+    out
 
     call ReadNumber:
 
@@ -11,6 +13,8 @@ BEGIN:
 
     call Factorial:
     push    rax
+    out
+    time
     out
     jmp     BEGIN:
 
