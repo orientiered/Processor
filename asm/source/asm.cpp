@@ -13,11 +13,11 @@ char *constructOutName(const char *inName, const char *extensionName);
 int main(int argc, const char *argv[]) {
     const char *extensionName = ".lol";
     logOpen();
-    logDisableBuffering();
-    setLogLevel(L_EXTRA);
 
     registerFlag(TYPE_STRING, "-i", "--input", "Input file name");
     registerFlag(TYPE_STRING, "-o", "--o", "Output file name");
+    registerFlag(TYPE_BLANK,  "-d", "--debug", "Disable buffering and set max log level");
+
     if (processArgs(argc, argv) != SUCCESS)
         return 1;
 
@@ -25,6 +25,10 @@ int main(int argc, const char *argv[]) {
         logPrint(L_ZERO, 1, "No input file\n");
         logClose();
         return 1;
+    }
+    if (isFlagSet("-d")) {
+        logDisableBuffering();
+        setLogLevel(L_EXTRA);
     }
 
     const char *inputName = getFlagValue("-i").string_;

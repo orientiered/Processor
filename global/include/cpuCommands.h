@@ -11,10 +11,10 @@ const char * const CPU_SIGNATURE = "ORI-D-_-";
 const int CPU_CMD_VERSION = 3;
 
 /// Constants for draw command
-const size_t DRAW_HEIGHT = 21;
-const size_t DRAW_WIDTH  = 21;
+const size_t DRAW_HEIGHT = 36;
+const size_t DRAW_WIDTH  = 96;
 //number after [ must be the same as draw height
-const char * const RETURN_ESCAPE_SEQUENCE = "\r\033[21A";
+const char * const RETURN_ESCAPE_SEQUENCE = "\r\033[36A";
 
 //TODO: use these constants in all ip movements
 const unsigned CMD_LEN = 1;

@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include "utils.h"
 
 long long maxINT(long long a, long long b) {
@@ -11,6 +12,26 @@ long long maxINT(long long a, long long b) {
 
 long long minINT(long long a, long long b) {
     return (a > b) ? b : a;
+}
+
+void percentageBar(size_t value, size_t maxValue, unsigned points, long long timePassed) {
+    //draw nice progress bar like
+    //[###|-----] 20.0% Remaining time: 20.4 s
+    printf("\r[");
+    for (unsigned i = 0; i < points; i++) {
+        double pointFill = double(value) / maxValue - double(i) / points;
+        if (pointFill > 0)
+            printf("#");
+        else if (pointFill > -0.5 / points)
+            printf("|");
+        else
+            printf("-");
+    }
+    printf("] %5.1f%%", double(value)/maxValue * 100);
+    if (value > 0 && timePassed > 0) {
+        printf(" Remaining time: %4.1f s", double(timePassed) / value * (maxValue - value) / CLOCKS_PER_SEC);
+    }
+    fflush(stdout);
 }
 
 void swap(void* a, void* b, size_t len) {

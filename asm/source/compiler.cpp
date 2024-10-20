@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <assert.h>
+#include <time.h>
 
 #include "cpuCommands.h"
 #include "error_debug.h"
@@ -388,6 +389,7 @@ static bool fixupLabels(compilerData_t *comp) {
         } else {
             logPrint(L_ZERO, 0, "\t(%d/%d) (ip=0x%.4X) Fixed label '%s'\n", idx + 1, comp->fixup.size, codeIdx, labelString);
         }
+        percentageBar(idx + 1, comp->fixup.size, 40, 0);
     }
     return true;
 }
@@ -397,14 +399,19 @@ bool compile(const char *inName, const char *outName) {
 
     compilerData_t comp = compilerDataCtor(inName, outName);
 
+    const size_t dotsCount = 40, skipCount = 20;
+    logPrint(L_ZERO, 1, "Parsing lines:\n");
     while(comp.lineIdx < comp.lineCnt) {
         if (!parseCodeLine(&comp)) {
             compilerDataDtor(&comp);
             return false;
         }
         comp.lineIdx++;
+        if (comp.lineIdx % skipCount == 0)
+            percentageBar(comp.lineIdx, comp.lineCnt, dotsCount, 0);
     }
 
+    logPrint(L_ZERO, 1, "\nFixing labels:\n");
     if (!fixupLabels(&comp)) {
         compilerDataDtor(&comp);
         return false;

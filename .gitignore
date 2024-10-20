@@ -5,4 +5,7 @@ asm/build/
 log.txt
 spu.out
 asm.out
+bad-apple-converter/badApple.asm
+bad-apple-converter/converter.out
+bad-apple-converter/frames-ascii/
 input.txt

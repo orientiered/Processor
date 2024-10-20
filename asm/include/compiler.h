@@ -1,7 +1,7 @@
 #ifndef ASM_COMPILER_H
 #define ASM_COMPILER_H
 
-const size_t MAX_CODE_SIZE = 2048;
+const size_t MAX_CODE_SIZE = 128000000;
 const size_t MAX_CMD_SIZE  = 128;
 const char * const COMMENT_SYMBOLS = ";#";
 const int POISON_IP = -1;

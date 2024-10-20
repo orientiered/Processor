@@ -38,7 +38,7 @@ bool cpuCtor(cpu_t *cpu, const char *program) {
     }
 
     if (hdr.signature != *(const uint64_t *) CPU_SIGNATURE) {
-        logPrint(L_ZERO, 1, "Wrong code signature: expected '%s', got '%s'\n", CPU_SIGNATURE, &hdr.signature);
+        logPrint(L_ZERO, 1, "Wrong code signature: expected 0x%0.16LX, got 0x%0.16LX\n", CPU_SIGNATURE, hdr.signature);
         return false;
     }
 
@@ -46,8 +46,10 @@ bool cpuCtor(cpu_t *cpu, const char *program) {
         logPrint(L_ZERO, 1, "Wrong command set version: expected %d, got %d\n", CPU_CMD_VERSION, hdr.cmdVersion);
         return false;
     }
+
     cpu->size = hdr.size;
     cpu->code = (int *) calloc(cpu->size, sizeof(int));
+    cpu->ram  = (int *) calloc(RAM_SIZE,  sizeof(int));
     cpu->ip = cpu->code;
     logPrint(L_DEBUG, 0, "Code size = %zu\n", cpu->size);
     for (size_t ip = 0; ip < cpu->size; ip++) {
@@ -68,6 +70,7 @@ bool cpuDtor(cpu_t *cpu) {
     stackDtor(&cpu->stk);
     stackDtor(&cpu->callStk);
     free(cpu->code); cpu->code = NULL;
+    free(cpu->ram) ; cpu->ram  = NULL;
     return true;
 }
 
@@ -147,7 +150,7 @@ static bool drawRAM(cpu_t *cpu) {
         for (size_t col = 0; col < DRAW_WIDTH; col++) {
             char c = (cpu->ram[row * DRAW_WIDTH + col] == 0) ? '.' : '*';
             putchar(c);
-            putchar(' '); //better width/height ratio
+            //putchar(' '); //better width/height ratio
         }
         putchar('\n');
     }

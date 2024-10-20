@@ -1,15 +1,15 @@
 #ifndef PROCESSOR_H
 #define PROCESSOR_H
 
-const size_t RAM_SIZE = 1000;
+const size_t RAM_SIZE = 4096;
 typedef struct {
     size_t size;
     Stack_t stk;
     Stack_t callStk;
     int *code;
     int *ip;
+    int *ram;
     int regs[CPU_REGS_COUNT + 1];
-    int ram[RAM_SIZE];
 } cpu_t;
 
 bool cpuCtor(cpu_t *cpu, const char *program);

@@ -33,6 +33,9 @@ typedef struct voidPtrPair {
 long long maxINT(long long a, long long b);
 long long minINT(long long a, long long b);
 
+///time passed in ms
+void percentageBar(size_t value, size_t maxValue, unsigned points, long long timePassed);
+
 void swap(void* a, void* b, size_t len);
 void swapByByte(void* a, void* b, size_t len);
 
