@@ -24,13 +24,8 @@ static const char *enumToCmd(enum CMD_OPS cmdCode) {
     return "Unknown command";
 }
 
-bool cpuCtor(cpu_t *cpu, const char *program) {
-    FILE *programFile = fopen(program, "r");
-    if (!programFile) {
-        logPrint(L_ZERO, 1, "Failed to read file\n");
-        return false;
-    }
-
+static bool readHeader(FILE *programFile, size_t *codeSize) {
+    MY_ASSERT(programFile && codeSize, abort());
     programHeader_t hdr = {};
     if (fread(&hdr, sizeof(hdr), 1, programFile) != 1) {
         logPrint(L_ZERO, 1, "Failed to read header\n");
@@ -47,14 +42,32 @@ bool cpuCtor(cpu_t *cpu, const char *program) {
         return false;
     }
 
-    cpu->size = hdr.size;
+    *codeSize = hdr.size;
+    return true;
+}
+
+bool cpuCtor(cpu_t *cpu, const char *program) {
+    FILE *programFile = fopen(program, "r");
+    if (!programFile) {
+        logPrint(L_ZERO, 1, "Failed to read file\n");
+        return false;
+    }
+
+    if (!readHeader(programFile, &cpu->size))
+        return false;
+
     cpu->code = (int *) calloc(cpu->size, sizeof(int));
     cpu->ram  = (int *) calloc(RAM_SIZE,  sizeof(int));
     cpu->ip = cpu->code;
     logPrint(L_DEBUG, 0, "Code size = %zu\n", cpu->size);
-    for (size_t ip = 0; ip < cpu->size; ip++) {
-        fscanf(programFile, "%x", &cpu->code[ip]);
+
+    if (fread(cpu->code, sizeof(int), cpu->size, programFile) != cpu->size) {
+        logPrint(L_ZERO, 1, "Failed to read file\n");
+        return false;
     }
+    // for (size_t ip = 0; ip < cpu->size; ip++) {
+    //     fscanf(programFile, "%x", &cpu->code[ip]);
+    // }
     fclose(programFile);
 
     stackCtor(&cpu->stk,     startStackSize);

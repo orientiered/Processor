@@ -362,11 +362,15 @@ static bool writeCodeToFile(compilerData_t *comp) {
     size_t codeSize = size_t(comp->ip - comp->code);
     programHeader_t hdr = {*(const uint64_t *) CPU_SIGNATURE, CPU_CMD_VERSION, codeSize};
     fwrite(&hdr, 1, sizeof(hdr), outFile);
-    fprintf(outFile, "\n");
+    //fprintf(outFile, "\n");
     // fprintf(outFile, "%s ", CPU_SIGNATURE);
     // fprintf(outFile, "%d %zu\n", CPU_CMD_VERSION, codeSize);
-    for (size_t idx = 0; idx < codeSize; idx++) {
-        fprintf(outFile, "%x ", comp->code[idx]); //TODO: Format
+    // for (size_t idx = 0; idx < codeSize; idx++) {
+    //     fprintf(outFile, "%x ", comp->code[idx]); //TODO: Format
+    // }
+    if (fwrite(comp->code, sizeof(int), codeSize, outFile) != codeSize) {
+        logPrint(L_ZERO, 1, "Failed to write code in file\n");
+        return false;
     }
     fclose(outFile);
     return true;
@@ -397,10 +401,11 @@ static bool fixupLabels(compilerData_t *comp) {
 bool compile(const char *inName, const char *outName) {
     assert(inName && outName);
 
+    logPrint(L_ZERO, 1, "--Reading program--\n");
     compilerData_t comp = compilerDataCtor(inName, outName);
 
     const size_t dotsCount = 40, skipCount = 20;
-    logPrint(L_ZERO, 1, "Parsing lines:\n");
+    logPrint(L_ZERO, 1, "--Parsing lines--\n");
     while(comp.lineIdx < comp.lineCnt) {
         if (!parseCodeLine(&comp)) {
             compilerDataDtor(&comp);
@@ -411,12 +416,13 @@ bool compile(const char *inName, const char *outName) {
             percentageBar(comp.lineIdx, comp.lineCnt, dotsCount, 0);
     }
 
-    logPrint(L_ZERO, 1, "\nFixing labels:\n");
+    logPrint(L_ZERO, 1, "\n--Fixing labels--\n");
     if (!fixupLabels(&comp)) {
         compilerDataDtor(&comp);
         return false;
     }
 
+    logPrint(L_ZERO, 1, "Writing assembled code\n");
     bool compilationResult = writeCodeToFile(&comp);
     compilerDataDtor(&comp);
     return compilationResult;

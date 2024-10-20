@@ -32,13 +32,16 @@ void percentageBar(size_t value, size_t maxValue, unsigned points, long long tim
     fflush(stdout);
 }
 
-bool writeFrame(FILE *out, const uint8_t *frame) {
-    for (size_t row = 0; row < HEIGHT; row++) {
-        for (size_t col = 0; col < WIDTH; col++) {
-            fprintf(out, "push %d\npop [%d]\n", frame[row * WIDTH + col], row * WIDTH + col);
-        }
+bool writeFrame(FILE *out, const uint8_t *oldFrame, const uint8_t *curFrame) {
+    if (oldFrame == NULL) {
+        for (size_t idx = 0; idx < HEIGHT*WIDTH; idx++)
+            fprintf(out, "push %u pop [%zu]\n", curFrame[idx], idx);
+    } else {
+        for (size_t idx = 0; idx < HEIGHT*WIDTH; idx++)
+            if (oldFrame[idx] != curFrame[idx])
+                fprintf(out, "push %u pop [%zu]\n", curFrame[idx], idx);
     }
-    fprintf(out, "sleep 20 drawr\n");
+    fprintf(out, "sleep 1 drawr\n");
     return true;
 }
 
@@ -51,7 +54,7 @@ bool readFrame(uint8_t *frame, size_t idx) {
     for (size_t row = 0; row < HEIGHT; row++) {
         fread(rowStr, WIDTH + 1, 1, in);
         for (size_t col = 0; col < WIDTH; col++) {
-            if (rowStr[col] == '@')
+            if (rowStr[col] == '@' || rowStr[col] == '#')
                 rowStr[col] = 1;
             else
                 rowStr[col] = 0;
@@ -63,15 +66,26 @@ bool readFrame(uint8_t *frame, size_t idx) {
 
 
 int main() {
-    uint8_t frame[WIDTH*HEIGHT] = {0};
+    uint8_t *curFrame = (uint8_t *) calloc(WIDTH*HEIGHT, sizeof(uint8_t)),
+            *oldFrame = (uint8_t *) calloc(WIDTH*HEIGHT, sizeof(uint8_t));
     FILE *out = fopen("badApple.asm", "wb");
 
-    for (size_t idx = 0; idx < FRAMES_COUNT; idx++) {
-        readFrame (frame, idx + 1);
-        writeFrame(out, frame);
+    readFrame(oldFrame, 1);
+    writeFrame(out, NULL, oldFrame);
+
+    for (size_t idx = 1; idx < FRAMES_COUNT; idx++) {
+        readFrame (curFrame, idx + 1);
+        writeFrame(out, oldFrame, curFrame);
+
+        uint8_t *temp = oldFrame;
+        oldFrame = curFrame;
+        curFrame = temp;
+
         percentageBar(idx + 1, FRAMES_COUNT, 40, clock());
     }
     printf("\n");
     fprintf(out, "hlt\n");
+    free(curFrame);
+    free(oldFrame);
     return 0;
 }
