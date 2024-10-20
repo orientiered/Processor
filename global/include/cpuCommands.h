@@ -13,8 +13,8 @@ const int CPU_CMD_VERSION = 4;
 /// Constants for draw command
 const size_t DRAW_HEIGHT = 36;
 const size_t DRAW_WIDTH  = 96;
-//number after [ must be the same as draw height
-const char * const RETURN_ESCAPE_SEQUENCE = "\r\033[36A";
+const char WHITE_CHAR = '?';
+const char BLACK_CHAR = '!';
 
 //TODO: use these constants in all ip movements
 const unsigned CMD_LEN = 1;

@@ -157,11 +157,11 @@ bool cpuDump(cpu_t *cpu) {
     return true;
 }
 
-static bool drawRAM(cpu_t *cpu) {
+static bool drawRAM(cpu_t *cpu, const size_t height, const size_t width) {
     MY_ASSERT(cpu, abort());
-    for (size_t row = 0; row < DRAW_HEIGHT; row++) {
-        for (size_t col = 0; col < DRAW_WIDTH; col++) {
-            char c = (cpu->ram[row * DRAW_WIDTH + col] == 0) ? '.' : '*';
+    for (size_t row = 0; row < height; row++) {
+        for (size_t col = 0; col < width; col++) {
+            char c = (cpu->ram[row * width + col] == 0) ? WHITE_CHAR : BLACK_CHAR;
             putchar(c);
             //putchar(' '); //better width/height ratio
         }
@@ -369,14 +369,14 @@ bool cpuRun(cpu_t *cpu) {
                 break;
             }
             case CMD_DRAW: {
-                drawRAM(cpu);
+                drawRAM(cpu, DRAW_HEIGHT, DRAW_WIDTH);
                 cpu->ip += CMD_LEN;
                 break;
             }
             case CMD_DRAWR: {
-                drawRAM(cpu);
+                drawRAM(cpu, DRAW_HEIGHT, DRAW_WIDTH);
                 cpu->ip += CMD_LEN;
-                printf(RETURN_ESCAPE_SEQUENCE);
+                printf("\033[%zuA", DRAW_HEIGHT);
                 fflush(stdout);
                 break;
             }
