@@ -175,7 +175,7 @@ static bool processLabel(compilerData_t *comp) {
     logPrint(L_EXTRA, 0, "\tProcessing label '%s'\n", comp->cmd);
     label_t *label = findLabel(comp->cmd, &comp->labels);
     if (label == NULL) {
-        label_t newLabel = {(int) (comp->ip - comp->code), strdup(comp->cmd)};
+        label_t newLabel = {(size_t) (comp->ip - comp->code), strdup(comp->cmd)};
         vectorPush(&comp->labels, &newLabel);
     } else {
         if (label->ip != POISON_IP) {
@@ -183,7 +183,7 @@ static bool processLabel(compilerData_t *comp) {
                 comp->inName, comp->lineIdx+1, comp->cmd);
             return false;
         } else {
-            label->ip = (int) (comp->ip - comp->code);
+            label->ip = (size_t) (comp->ip - comp->code);
         }
     }
     return true;
@@ -217,15 +217,15 @@ static bool processJmpLabel(compilerData_t *comp, char **line) {
         *comp->ip = label->ip;
         logPrint(L_EXTRA, 0, "\t\tFound in labels, ip = 0x%X\n", label->ip);
         if (label->ip == POISON_IP) {
-            jmpLabel_t jmpLabel = {comp->ip, comp->labels.size - 1, comp->lineIdx};
+            jmpLabel_t jmpLabel = {size_t(comp->ip - comp->code), comp->labels.size - 1, comp->lineIdx};
             vectorPush(&comp->fixup,  &jmpLabel);
         }
     } else {
         label_t newLabel = {-1, strdup(comp->cmd)};
         vectorPush(&comp->labels, &newLabel);
         logPrint(L_EXTRA, 0, "\t\tPush in labels, idx = %d, ip = 0x%X, line = %zu\n",
-                             comp->labels.size - 1, (int)(comp->ip - comp->code), comp->lineIdx);
-        jmpLabel_t jmpLabel = {comp->ip, comp->labels.size - 1, comp->lineIdx};
+                             comp->labels.size - 1, (size_t)(comp->ip - comp->code), comp->lineIdx);
+        jmpLabel_t jmpLabel = {size_t(comp->ip - comp->code), comp->labels.size - 1, comp->lineIdx};
         vectorPush(&comp->fixup,  &jmpLabel);
     }
     comp->ip++;
@@ -381,7 +381,7 @@ static bool fixupLabels(compilerData_t *comp) {
     logPrint(L_EXTRA, 0, "Resolving fixups: total %d\n", comp->fixup.size);
     for (size_t idx = 0; idx < comp->fixup.size; idx++) {
         jmpLabel_t *jmpLabel = vectorGetT(jmpLabel_t*, &comp->fixup, idx);
-        size_t codeIdx = (size_t) (jmpLabel->ip - comp->code);
+        size_t codeIdx = jmpLabel->ip;
         comp->code[codeIdx] = vectorGetT(label_t*, &comp->labels, jmpLabel->index)->ip;
 
         const char *labelString = vectorGetT(label_t*, &comp->labels, jmpLabel->index)->label;

@@ -4,8 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <unistd.h>
-#include <time.h>
-//TODO: REMOVE last include
+#include <sys/time.h>
 
 #include "error_debug.h"
 #include "utils.h"
@@ -311,7 +310,8 @@ static bool handleMath(cpu_t *cpu) {
 bool cpuRun(cpu_t *cpu) {
     bool run = true;
     logPrintWithTime(L_DEBUG, 0, "Entered cpuRun\n");
-    clock_t startTime = clock();
+    struct timeval startTime = {0}, currentTime = {0};
+    gettimeofday(&startTime, NULL);
     while (run) {
         cpuDump(cpu);
         switch(*cpu->ip & MASK_CMD) {
@@ -348,8 +348,10 @@ bool cpuRun(cpu_t *cpu) {
                 break;
             }
             case CMD_TIME: {
-                logPrint(L_ZERO, 1, "Current time %u, %ld, %ld\n", (clock() - startTime) / CLOCKS_PER_SEC, CLOCKS_PER_SEC, clock() - startTime);
-                stackPush(&cpu->stk, (clock() - startTime) / CLOCKS_PER_SEC);
+                gettimeofday(&currentTime, NULL);
+                int timeInMs = ((currentTime.tv_sec  - startTime.tv_sec) * 1000000 +
+                                (currentTime.tv_usec - startTime.tv_usec)) / 1000;
+                stackPush(&cpu->stk, timeInMs);
                 cpu->ip += CMD_LEN;
                 break;
             }

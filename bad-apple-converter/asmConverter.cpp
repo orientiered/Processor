@@ -41,7 +41,7 @@ bool writeFrame(FILE *out, const uint8_t *oldFrame, const uint8_t *curFrame) {
             if (oldFrame[idx] != curFrame[idx])
                 fprintf(out, "push %u pop [%zu]\n", curFrame[idx], idx);
     }
-    fprintf(out, "sleep 1 drawr\n");
+    fprintf(out, "call DRWAIT:\n");
     return true;
 }
 
@@ -70,6 +70,7 @@ int main() {
             *oldFrame = (uint8_t *) calloc(WIDTH*HEIGHT, sizeof(uint8_t));
     FILE *out = fopen("badApple.asm", "wb");
 
+    fprintf(out, "in\n pop rbx\n");
     readFrame(oldFrame, 1);
     writeFrame(out, NULL, oldFrame);
 
@@ -89,6 +90,15 @@ int main() {
     }
     printf("\n");
     fprintf(out, "hlt\n");
+    fprintf(out,
+    "\nDRWAIT:\n"
+    "\ttime push rax sub\n"
+    "\tpush rbx\n"
+    "\tjae DRWAIT:\n"
+    "\ttime pop rax\n"
+    "\tdrawr\n"
+    "ret\n");
+    fclose(out);
     free(curFrame);
     free(oldFrame);
     return 0;

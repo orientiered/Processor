@@ -13,7 +13,7 @@ typedef struct {
 } label_t;
 
 typedef struct {
-    int *ip;
+    int ip;
     int index;
     size_t lineIdx;
 } jmpLabel_t;
