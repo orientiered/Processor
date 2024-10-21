@@ -1,5 +1,3 @@
-#WIN for windows, LINUX for linux
-SYSTEM = LINUX
 BUILD = DEBUG
 
 ifeq ($(origin CC),default)
@@ -9,10 +7,10 @@ endif
 all:spu asm
 .PHONY: spu
 spu:
-	$(MAKE) -f MakefileSPU CC=$(CC) SYSTEM=$(SYSTEM) BUILD=$(BUILD)
+	cd spu && $(MAKE) CC=$(CC) BUILD=$(BUILD)
 .PHONY: asm
 asm:
-	$(MAKE) -f MakefileASM CC=$(CC) SYSTEM=$(SYSTEM) BUILD=$(BUILD)
+	cd asm && $(MAKE) CC=$(CC) BUILD=$(BUILD)
 clean:
-	$(MAKE) -f MakefileSPU clean
-	$(MAKE) -f MakefileASM clean
+	cd spu && $(MAKE) clean
+	cd asm && $(MAKE) clean

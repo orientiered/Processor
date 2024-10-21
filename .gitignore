@@ -1,7 +1,11 @@
 .vscode/
 *.lol
-spu/build/
-asm/build/
+
+spu/build
+asm/build
+global/build
+containers/build
+
 log.txt
 spu.out
 asm.out
