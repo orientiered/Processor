@@ -87,7 +87,9 @@ bool cpuDtor(cpu_t *cpu) {
     return true;
 }
 
-static int* getArgs(cpu_t *cpu) {
+// argType = 0 push-like command
+//         = 1 pop--like command
+static int* getArgs(cpu_t *cpu, int argType) {
     MY_ASSERT(cpu, abort());
     //MY_ASSERT((*cpu->ip & MASK_CMD) == CMD_PUSH || (*cpu->ip & MASK_CMD) == CMD_POP, abort());
 
@@ -115,12 +117,12 @@ static int* getArgs(cpu_t *cpu) {
     }
 
     logPrint(L_EXTRA, 0, "operation %x, \ttemp = %d\n", command, temp);
-    if ((command == CMD_PUSH || command == CMD_SLEEP) && !MEMORY) {
+    if (argType == 0 && !MEMORY) {
         cpu->regs[R0X] = temp;
         if (result) cpu->regs[R0X] += *result;
         result = &cpu->regs[R0X];
     }
-    if (command == CMD_POP && REGISTER && !MEMORY && !IMMEDIATE) {
+    if (argType == 1 && REGISTER && !MEMORY && !IMMEDIATE) {
         logPrint(L_EXTRA, 0, "\tpopping to register\n");
     }
 
@@ -312,6 +314,11 @@ static bool handleMath(cpu_t *cpu) {
     return true;
 }
 
+#define DEF_CMD_(cmdName, cmdIndex, argHandler, ...) \
+    case CMD_##cmdName: {
+        __VA_ARGS__;
+        break;
+    }
 bool cpuRun(cpu_t *cpu) {
     bool run = true;
     logPrintWithTime(L_DEBUG, 0, "Entered cpuRun\n");
@@ -389,7 +396,7 @@ bool cpuRun(cpu_t *cpu) {
             case CMD_DRAWR: {
                 drawRAM(cpu, DRAW_HEIGHT, DRAW_WIDTH);
                 cpu->ip += CMD_LEN;
-                printf("\033[%zuA", DRAW_HEIGHT + 1);
+                printf("\033[%zuA", DRAW_HEIGHT);
                 fflush(stdout);
                 break;
             }
