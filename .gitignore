@@ -10,5 +10,5 @@ log.txt
 spu.out
 asm.out
 bad-apple-converter/converter.out
-bad-apple-converter/frames-ascii/
+bad-apple-converter/*.asm
 input.txt

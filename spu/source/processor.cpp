@@ -134,14 +134,14 @@ bool cpuDump(cpu_t *cpu) {
     size_t startPos = (curPosition > 10) ? curPosition - 10 : 0;
     size_t endPos = (curPosition + 10 < cpu->size) ? curPosition + 10 : cpu->size;
     for (size_t idx = startPos; idx <= endPos; idx++) {
-        logPrint(L_DEBUG, 0, " %3x", idx);
+        logPrint(L_DEBUG, 0, " %7x", idx);
     }
     logPrint(L_DEBUG, 0, "\n");
     for (size_t idx = startPos; idx < endPos; idx++) {
-        logPrint(L_DEBUG, 0, " %3x", cpu->code[idx]);
+        logPrint(L_DEBUG, 0, " %7x", cpu->code[idx]);
     }
     logPrint(L_DEBUG, 0, "\n");
-    for (size_t spaceCnt = 0; spaceCnt < (curPosition-startPos)*4 + 3; spaceCnt++)
+    for (size_t spaceCnt = 0; spaceCnt < (curPosition-startPos)*8 + 7; spaceCnt++)
         logPrint(L_DEBUG, 0, " ");
 
     logPrint(L_DEBUG, 0, "^ %s\n", enumToCmd(CMD_OPS(*cpu->ip & MASK_CMD)));
@@ -149,6 +149,11 @@ bool cpuDump(cpu_t *cpu) {
     // logPrint(L_DEBUG, 0, "ip = %zu, stk.size = %zu\n", ip, stackGetSize(&cpu->stk));
     for (size_t idx = 0; idx < stackGetSize(&cpu->stk); idx++)
         logPrint(L_DEBUG, 0, "%d ", cpu->stk.data[idx]);
+    logPrint(L_DEBUG, 0, "\n");
+
+    logPrint(L_DEBUG, 0, "CallStack: ");
+    for (size_t idx = 0; idx < stackGetSize(&cpu->callStk); idx++)
+        logPrint(L_DEBUG, 0, "0x%X ", cpu->callStk.data[idx]);
     logPrint(L_DEBUG, 0, "\n");
 
     logPrint(L_DEBUG, 0, "REGISTERS: rax = %d, rbx = %d, rcx = %d, rdx = %d, rex = %d\n", cpu->regs[RAX], cpu->regs[RBX], cpu->regs[RCX], cpu->regs[RDX], cpu->regs[REX]);
@@ -320,6 +325,10 @@ bool cpuRun(cpu_t *cpu) {
                 break;
             }
             case CMD_POP: {
+                if (cpu->stk.size == 0) {
+                    logPrint(L_ZERO, 1, "Empty stack on cmd_pop at 0x%X\n", size_t(cpu->ip - cpu->code));
+                    return false;
+                }
                 *getArgs(cpu) = stackPop(&cpu->stk);
                 break;
             }
@@ -356,6 +365,10 @@ bool cpuRun(cpu_t *cpu) {
                 break;
             }
             case CMD_OUT: {
+                if (stackGetSize(&cpu->stk) == 0) {
+                    logPrint(L_ZERO, 1, "Empty stack on cmd_out at 0x%X\n", size_t(cpu->ip - cpu->code));
+                    return false;
+                }
                 int val = stackPop(&cpu->stk);
                 printf("%d\n", val);
                 cpu->ip += CMD_LEN;
@@ -376,7 +389,7 @@ bool cpuRun(cpu_t *cpu) {
             case CMD_DRAWR: {
                 drawRAM(cpu, DRAW_HEIGHT, DRAW_WIDTH);
                 cpu->ip += CMD_LEN;
-                printf("\033[%zuA", DRAW_HEIGHT);
+                printf("\033[%zuA", DRAW_HEIGHT + 1);
                 fflush(stdout);
                 break;
             }
@@ -390,7 +403,7 @@ bool cpuRun(cpu_t *cpu) {
                 break;
             }
             default: {
-                logPrint(L_ZERO, 1, "Invalid command code: %d\n", *cpu->ip);
+                logPrint(L_ZERO, 1, "Invalid command code '%d' at 0x%X\n", *cpu->ip, size_t(cpu->ip - cpu->code));
                 return false;
             }
         }

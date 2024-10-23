@@ -2,10 +2,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
 #include <stdbool.h>
 #include <time.h>
 
-const size_t FRAMES_COUNT = 6572;
+const size_t FRAMES_COUNT = 6572; //6572
 const size_t WIDTH  = 96;
 const size_t HEIGHT = 36;
 
@@ -32,15 +33,45 @@ void percentageBar(size_t value, size_t maxValue, unsigned points, long long tim
     fflush(stdout);
 }
 
-bool writeFrame(FILE *out, const uint8_t *oldFrame, const uint8_t *curFrame) {
-    if (oldFrame == NULL) {
-        for (size_t idx = 0; idx < HEIGHT*WIDTH; idx++)
-            fprintf(out, "push %u pop [%zu]\n", curFrame[idx], idx);
-    } else {
-        for (size_t idx = 0; idx < HEIGHT*WIDTH; idx++)
-            if (oldFrame[idx] != curFrame[idx])
-                fprintf(out, "push %u pop [%zu]\n", curFrame[idx], idx);
+inline bool writeFill(FILE *out, const long long start, const long long finish, int color) {
+    assert(out);
+    const int LOOP_CMD = 4;
+    if (start >= 0) {
+        if (finish - start >= LOOP_CMD)
+            fprintf(out,
+            "push %lld push %lld\npush %d\n"
+            "call loopFill:\n",
+            start, finish, color);
+        else {
+            for (size_t idx = start; idx < finish; idx++)
+                fprintf(out, "push %d pop [%zu]\n", color, idx);
+        }
     }
+    return true;
+}
+
+bool writeFrame(FILE *out, const uint8_t *oldFrame, const uint8_t *curFrame) {
+    long long seqStart = -1, seqFinish = 0;
+    int color = -1;
+    for (size_t idx = 0; idx < HEIGHT*WIDTH; idx++) {
+        if (oldFrame == NULL) {
+            writeFill(out, idx, idx+1, curFrame[idx]);
+        } else if (oldFrame[idx] != curFrame[idx]) {
+            if (color != curFrame[idx]) {
+                writeFill(out, seqStart, seqFinish, color);
+                color = curFrame[idx];
+                seqStart = idx;
+                seqFinish = seqStart + 1;
+            } else {
+                seqFinish++;
+            }
+        } else {
+            writeFill(out, seqStart, seqFinish, color);
+            seqStart = color = -1;
+        }
+
+    }
+    writeFill(out, seqStart, seqFinish, color);
     fprintf(out, "call DRWAIT:\n");
     return true;
 }
@@ -97,9 +128,25 @@ int main() {
     "\tjae DRWAIT:\n"
     "\ttime pop rax\n"
     "\tdrawr\n"
-    "ret\n");
+    "ret\n"
+    "\nloopFill:\n"
+    "    pop     rcx ;color\n"
+    "    pop     rdx ;last\n"
+    "    pop     rex ;current\n"
+    "fillStart:\n"
+    "    push    rex\n"
+    "    push    rdx\n"
+    "    jbe     fillEnd:\n"
+    "    push    rcx\n"
+    "    pop     [rex]\n\n"
+    "    push    rex + 1\n"
+    "    pop     rex\n"
+    "    jmp     fillStart:\n"
+    "fillEnd:\n"
+    "    ret\n");
     fclose(out);
     free(curFrame);
     free(oldFrame);
     return 0;
 }
+

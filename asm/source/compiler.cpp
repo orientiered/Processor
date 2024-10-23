@@ -177,12 +177,15 @@ static bool processLabel(compilerData_t *comp) {
     if (label == NULL) {
         label_t newLabel = {(size_t) (comp->ip - comp->code), strdup(comp->cmd)};
         vectorPush(&comp->labels, &newLabel);
+        logPrint(L_EXTRA, 0, "\t\tAdding label name to array of labels: id = %d, ip = 0x%X\n",
+                comp->labels.size - 1, (size_t) (comp->ip - comp->code));
     } else {
         if (label->ip != POISON_IP) {
             logPrint(L_ZERO, 1, "Syntax error in %s:%zu : redefined label '%s'\n",
                 comp->inName, comp->lineIdx+1, comp->cmd);
             return false;
         } else {
+            logPrint(L_EXTRA, 0, "\t\tAdding ip to label: ip = 0x%X\n", (size_t) (comp->ip - comp->code));
             label->ip = (size_t) (comp->ip - comp->code);
         }
     }
@@ -215,10 +218,12 @@ static bool processJmpLabel(compilerData_t *comp, char **line) {
     label_t *label = findLabel(comp->cmd, &comp->labels);
     if (label != NULL) {
         *comp->ip = label->ip;
+        size_t labelIdx = size_t(label - (label_t*)comp->labels.base);
         logPrint(L_EXTRA, 0, "\t\tFound in labels, ip = 0x%X\n", label->ip);
         if (label->ip == POISON_IP) {
-            jmpLabel_t jmpLabel = {size_t(comp->ip - comp->code), comp->labels.size - 1, comp->lineIdx};
+            jmpLabel_t jmpLabel = {size_t(comp->ip - comp->code), labelIdx, comp->lineIdx};
             vectorPush(&comp->fixup,  &jmpLabel);
+            logPrint(L_EXTRA, 0, "\t\tAdding to fixup: idx = %zu\n", comp->fixup.size - 1);
         }
     } else {
         label_t newLabel = {-1, strdup(comp->cmd)};

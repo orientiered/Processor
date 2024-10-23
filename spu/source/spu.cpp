@@ -22,7 +22,7 @@ int main(int argc, const char *argv[]) {
 
     const char *fileName = "program_code.txt";
     if (isFlagSet("-d")) {
-        logDisableBuffering();
+        //logDisableBuffering();
         setLogLevel(L_EXTRA);
     }
     if (isFlagSet("-i"))
@@ -35,7 +35,10 @@ int main(int argc, const char *argv[]) {
         return CTOR_ERROR;
     }
 
-    cpuRun(&cpu);
+    if (!cpuRun(&cpu)) {
+        setLogLevel(L_DEBUG);
+        cpuDump(&cpu);
+    }
     cpuDtor(&cpu);
     logClose();
     return 0;

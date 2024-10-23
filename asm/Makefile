@@ -24,7 +24,7 @@ ifeq ($(origin CC),default)
 endif
 
 #Names of compiled executable
-NAME := asm.out
+NAME := ../asm.out
 #Name of directory with headers
 INCLUDEDIRS := include ../global/include ../containers/include
 
