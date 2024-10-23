@@ -177,148 +177,9 @@ static bool drawRAM(cpu_t *cpu, const size_t height, const size_t width) {
     return true;
 }
 
-static bool handleJumps(cpu_t *cpu) {
-    MY_ASSERT(cpu, abort());
-    bool conditionalJump = false;
-    switch(*cpu->ip & MASK_CMD) {
-        case CMD_JMP: {
-            cpu->ip = cpu->code + cpu->ip[CMD_LEN];
-            break;
-        }
-        case CMD_CALL: {
-            //pushing pointer to NEXT command
-            stackPush(&cpu->callStk, (size_t) (cpu->ip - cpu->code) + CMD_LEN + ARG_LEN);
-            cpu->ip = cpu->code + cpu->ip[CMD_LEN];
-            break;
-        }
-        case CMD_RET: {
-            if (stackGetSize(&cpu->callStk) == 0) {
-                logPrint(L_ZERO, 1, "Can't return, callStack is empty\n");
-                return false;
-            }
-            cpu->ip = cpu->code + stackPop(&cpu->callStk);
-            break;
-        }
-        case CMD_JL: {
-            if (rand() % 2) {
-                cpu->ip = cpu->code + cpu->ip[CMD_LEN];
-            } else
-                cpu->ip += CMD_LEN + ARG_LEN;
-            break;
-        }
-        default: {
-            conditionalJump = true;
-            break;
-        }
-
-    }
-    logPrint(L_EXTRA, 0, "conditional = %d\n", conditionalJump);
-    if (!conditionalJump)
-        return true;
-
-    int val1 = stackPop(&cpu->stk);
-    int val2 = stackPop(&cpu->stk);
-    bool makeJump = false;
-    switch(*cpu->ip & MASK_CMD) {
-        case CMD_JA: {
-            makeJump = (val1 >  val2);
-            break;
-        }
-        case CMD_JAE: {
-            makeJump = (val1 >= val2);
-            break;
-        }
-        case CMD_JB: {
-            makeJump = (val1 <  val2);
-            break;
-        }
-        case CMD_JBE: {
-            makeJump = (val1 <= val2);
-            break;
-        }
-        case CMD_JE: {
-            makeJump = (val1 == val2);
-            break;
-        }
-        case CMD_JNE: {
-            makeJump = (val1 != val2);
-            break;
-        }
-        default: {
-            logPrint(L_ZERO, 1, "Unknown jump %d\n", *cpu->ip);
-            return false;
-        }
-
-    }
-
-    if (makeJump)
-        cpu->ip = cpu->code + cpu->ip[CMD_LEN];
-    else
-        cpu->ip += CMD_LEN + ARG_LEN;
-
-    return true;
-}
-
-static bool handleMath(cpu_t *cpu) {
-    bool twoOperands = false;
-
-    int val1 = stackPop(&cpu->stk);
-    switch(*cpu->ip & MASK_CMD) {
-        case CMD_SQRT: {
-            stackPush(&cpu->stk, (int)sqrt(val1));
-            break;
-        }
-        case CMD_SIN: {
-            stackPush(&cpu->stk, (int)sin(val1));
-            break;
-        }
-        case CMD_COS: {
-            stackPush(&cpu->stk, (int)cos(val1));
-            break;
-        }
-        default: {
-            twoOperands = true;
-            break;
-        }
-    }
-
-    if (!twoOperands) {
-        cpu->ip += CMD_LEN;
-        return true;
-    }
-
-    int val2 = stackPop(&cpu->stk);
-    switch(*cpu->ip & MASK_CMD) {
-        case CMD_ADD: {
-            stackPush(&cpu->stk, val1 + val2);
-            break;
-        }
-        case CMD_SUB: {
-            stackPush(&cpu->stk, val2 - val1);
-            break;
-        }
-        case CMD_MUL: {
-            stackPush(&cpu->stk, val1 * val2);
-            break;
-        }
-        case CMD_DIV: {
-            stackPush(&cpu->stk, val2 / val1);
-            break;
-        }
-        default: {
-            logPrint(L_ZERO, 1, "Unknown math command %d\n", *cpu->ip);
-            return false;
-        }
-    }
-    cpu->ip += CMD_LEN;
-    return true;
-}
-
 #define DEF_CMD_(cmdName, cmdIndex, argHandler, ...) \
-    case CMD_##cmdName: {
-        __VA_ARGS__;
-        break;
-    }
+    case CMD_##cmdName: __VA_ARGS__; break;
+
 bool cpuRun(cpu_t *cpu) {
     bool run = true;
     logPrintWithTime(L_DEBUG, 0, "Entered cpuRun\n");
@@ -327,88 +188,7 @@ bool cpuRun(cpu_t *cpu) {
     while (run) {
         cpuDump(cpu);
         switch(*cpu->ip & MASK_CMD) {
-            case CMD_PUSH: {
-                stackPush(&cpu->stk, *getArgs(cpu));
-                break;
-            }
-            case CMD_POP: {
-                if (cpu->stk.size == 0) {
-                    logPrint(L_ZERO, 1, "Empty stack on cmd_pop at 0x%X\n", size_t(cpu->ip - cpu->code));
-                    return false;
-                }
-                *getArgs(cpu) = stackPop(&cpu->stk);
-                break;
-            }
-            case CMD_ADD:  case CMD_SUB:
-            case CMD_MUL:  case CMD_DIV:
-            case CMD_SIN:  case CMD_COS:
-            case CMD_SQRT:
-            {
-                if (!handleMath(cpu))
-                    return false;
-                break;
-            }
-            case CMD_SLEEP: {
-                //sleeping *getArgs(cpu) ms
-                usleep(*getArgs(cpu) * 1000);
-                break;
-            }
-            case CMD_JMP:  case CMD_JL:
-            case CMD_CALL: case CMD_RET:
-            case CMD_JA:   case CMD_JAE:
-            case CMD_JB:   case CMD_JBE:
-            case CMD_JE:   case CMD_JNE:
-            {
-                if (!handleJumps(cpu))
-                    return false;
-                break;
-            }
-            case CMD_TIME: {
-                gettimeofday(&currentTime, NULL);
-                int timeInMs = ((currentTime.tv_sec  - startTime.tv_sec) * 1000000 +
-                                (currentTime.tv_usec - startTime.tv_usec)) / 1000;
-                stackPush(&cpu->stk, timeInMs);
-                cpu->ip += CMD_LEN;
-                break;
-            }
-            case CMD_OUT: {
-                if (stackGetSize(&cpu->stk) == 0) {
-                    logPrint(L_ZERO, 1, "Empty stack on cmd_out at 0x%X\n", size_t(cpu->ip - cpu->code));
-                    return false;
-                }
-                int val = stackPop(&cpu->stk);
-                printf("%d\n", val);
-                cpu->ip += CMD_LEN;
-                break;
-            }
-            case CMD_IN: {
-                int val = 0;
-                scanf("%d", &val);
-                stackPush(&cpu->stk, val);
-                cpu->ip += CMD_LEN;
-                break;
-            }
-            case CMD_DRAW: {
-                drawRAM(cpu, DRAW_HEIGHT, DRAW_WIDTH);
-                cpu->ip += CMD_LEN;
-                break;
-            }
-            case CMD_DRAWR: {
-                drawRAM(cpu, DRAW_HEIGHT, DRAW_WIDTH);
-                cpu->ip += CMD_LEN;
-                printf("\033[%zuA", DRAW_HEIGHT);
-                fflush(stdout);
-                break;
-            }
-            case CMD_DUMP: {
-                stackDump(&cpu->stk);
-                cpu->ip += CMD_LEN;
-                break;
-            }
-            case CMD_HLT: {
-                run = false;
-                break;
-            }
+            #include "Commands.h"
             default: {
                 logPrint(L_ZERO, 1, "Invalid command code '%d' at 0x%X\n", *cpu->ip, size_t(cpu->ip - cpu->code));
                 return false;
@@ -417,5 +197,6 @@ bool cpuRun(cpu_t *cpu) {
     }
     return true;
 }
+#undef DEF_CMD_
 
 

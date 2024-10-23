@@ -446,7 +446,7 @@ bool compile(const char *inName, const char *outName) {
         return false;
     }
 
-    logPrint(L_ZERO, 1, "Writing assembled code\n");
+    logPrint(L_ZERO, 1, "--Writing assembled code--\n");
     bool compilationResult = writeCodeToFile(&comp);
     compilerDataDtor(&comp);
     return compilationResult;

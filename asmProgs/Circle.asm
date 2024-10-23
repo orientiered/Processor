@@ -1,7 +1,8 @@
 # Draws circle in console
 # 19.10.24
 
-    in      pop     rax
+    in
+    pop     rax
     push    rax
     draw
 
@@ -9,12 +10,14 @@
     pop     rex
 
 ANIM_START:
+    ;dump
     call    fillCircle:
     drawr
-    sleep   16
+    sleep   10
+    ;dump
     call    updateRax:
+    ;dump
     jmp ANIM_START:
-
     hlt
 
 
@@ -41,7 +44,8 @@ fillCircle:
         add
         pop     rdx     ; rdx = 96*rbx + rcx
 
-        push    0 pop     [rdx]   ;Clearing pixel
+        push    0
+        pop     [rdx]   ;Clearing pixel
 
         push    rax
 
