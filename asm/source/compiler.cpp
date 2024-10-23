@@ -36,26 +36,25 @@ static enum CMD_OPS cmdToEnum(const char *cmd) {
     assert(cmd);
 
     for (size_t idx = 0; idx < ARRAY_SIZE(CPU_COMMANDS_ARRAY); idx++) {
-        if (strcmp(cmd, CPU_COMMANDS_ARRAY[idx].name) == 0)
+        if (myStricmp(cmd, CPU_COMMANDS_ARRAY[idx].name) == 0)
             return CPU_COMMANDS_ARRAY[idx].op;
     }
     return CMD_SNTXERR;
 }
 
-static bool checkCmdBits(int *cmdPtr) {
+static bool checkCmdBits(int *cmdPtr, int argType) {
     bool correctBits = true;
-    int cmd = *cmdPtr & MASK_CMD;
     bool IMMEDIATE = *cmdPtr & MASK_IMMEDIATE,
          REGISTER  = *cmdPtr & MASK_REGISTER,
          MEMORY    = *cmdPtr & MASK_MEMORY;
 
-    if (cmd == CMD_POP) {
+    if (argType == 1) {
         // M*!I*!R or !M*(I or !R)
         if      ( MEMORY && !IMMEDIATE && !REGISTER)
             correctBits = false;
         else if (!MEMORY && (IMMEDIATE || !REGISTER))
             correctBits = false;
-    } else if (cmd == CMD_PUSH || cmd == CMD_SLEEP) {
+    } else if (argType == 0) {
         if (!IMMEDIATE && !REGISTER)
             correctBits = false;
     }
@@ -63,7 +62,9 @@ static bool checkCmdBits(int *cmdPtr) {
     return correctBits;
 }
 
-static bool scanArgs(compilerData_t *comp, char **line) {
+/// argType = 0 -> arguments like push
+/// argType = 1 -> arguments like pop
+static bool scanArgs(compilerData_t *comp, char **line, int argType) {
     assert(comp);
     assert(line && *line);
 
@@ -109,13 +110,13 @@ static bool scanArgs(compilerData_t *comp, char **line) {
 
     *line += scannedChars;
 
-    if (!checkCmdBits(cmdPtr)) {
+    if (!checkCmdBits(cmdPtr, argType)) {
         logPrint(L_ZERO, 1, "Syntax error in %s:%zu : ",
                 comp->inName, comp->lineIdx+1);
-        if ((*cmdPtr & MASK_CMD) == CMD_PUSH)
-            logPrint(L_ZERO, 1, "wrong push arguments:\n");
+        if (argType == 0)
+            logPrint(L_ZERO, 1, "wrong push-like arguments:\n");
         else
-            logPrint(L_ZERO, 1, "wrong pop  arguments:\n");
+            logPrint(L_ZERO, 1, "wrong pop-like  arguments:\n");
 
         logPrint(L_ZERO, 1, "\tMEMORY = %d, REGISTER = %d, IMMEDIATE = %d\n", bool(*cmdPtr & MASK_MEMORY),
                                                                               bool(*cmdPtr & MASK_REGISTER),
@@ -159,7 +160,7 @@ static label_t *findLabel(char *cmd, Vector_t* labels) {
     assert(labels);
 
     if (labels->size == 0) return (label_t *) NULL;
-    char *endIdx = (char *)vectorGet(labels, labels->size - 1);
+    char *endIdx = vectorGetT(char*, labels, labels->size - 1);
     for (char *idx = (char *)labels->base; idx <= endIdx; idx += labels->elemSize) {
         if (strcmp(cmd, ((label_t *)idx)->label) == 0)
             return (label_t *)idx;
@@ -192,7 +193,7 @@ static bool processLabel(compilerData_t *comp) {
     return true;
 }
 
-static bool processJmpLabel(compilerData_t *comp, char **line) {
+static bool scanJmpLabel(compilerData_t *comp, char **line) {
     MY_ASSERT(comp && line && *line, abort());
 
     logPrint(L_EXTRA, 0, "\tJump '%s': ", comp->cmd);
@@ -244,45 +245,36 @@ static bool parseCodeLine(compilerData_t *comp) {
     assert(comp);
 
     char *line = comp->codeLines[comp->lineIdx];
-    #define IP_TO_IDX(comp) ((int)(comp->ip - comp->code))
+    #define IP_TO_IDX(comp) ((size_t)(comp->ip - comp->code))
     int scannedChars = 0;
     logPrint(L_EXTRA, 0, "%s:%d: '%s'\n", comp->inName, comp->lineIdx, line);
     if (checkIsLabel(line))
         return processLabel(comp);
 
     while (sscanf(line, "%s%n", comp->cmd, &scannedChars) == 1) {
-        //logPrint(L_EXTRA, 0, "\tBefore scan: '%s'\n", line);
         line += scannedChars;
-        //logPrint(L_EXTRA, 0, "\tAfter  scan: '%s'\n", line);
 
         *comp->ip = (int)cmdToEnum(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
             return false;
         logPrint(L_EXTRA, 0, "\tCmd: `%s` -> %d (ip = 0x%X)\n", comp->cmd, *comp->ip, IP_TO_IDX(comp));
 
+        #define DEF_CMD_(cmdName, cmdIndex, argHandler, ...)    \
+        case CMD_##cmdName: {                                   \
+            if (!(argHandler))                                  \
+                return false;                                   \
+            break;                                              \
+        }
+
         switch(*comp->ip) {
-            case CMD_PUSH: case CMD_POP: case CMD_SLEEP:
-            {
-                if (!scanArgs(comp, &line))
-                    return false;
-                break;
-            }
-            case CMD_JMP: case CMD_JL:
-            case CMD_JA:  case CMD_JAE:
-            case CMD_JB:  case CMD_JBE:
-            case CMD_JE:  case CMD_JNE:
-            case CMD_CALL:
-            {
-                if (!processJmpLabel(comp, &line))
-                    return false;
-                break;
-            }
+            #include "Commands.h"
             default:
             {
-                comp->ip++;
+                logPrint(L_ZERO, 1, "It's possible that something went wrong (see %s:%d)\n", __FILE__, __LINE__);
                 break;
             }
         }
+        #undef DEF_CMD_
     }
     return true;
 }

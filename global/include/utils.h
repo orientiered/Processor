@@ -33,6 +33,9 @@ typedef struct voidPtrPair {
 long long maxINT(long long a, long long b);
 long long minINT(long long a, long long b);
 
+/// @brief compare strings ignoring case
+int myStricmp(const char *strA, const char *strB);
+
 ///time passed in ms
 void percentageBar(size_t value, size_t maxValue, unsigned points, long long timePassed);
 

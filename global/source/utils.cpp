@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
@@ -12,6 +13,12 @@ long long maxINT(long long a, long long b) {
 
 long long minINT(long long a, long long b) {
     return (a > b) ? b : a;
+}
+
+int myStricmp(const char *strA, const char *strB) {
+//TODO: maybe in far far future optimize this function
+    while (*strA && (tolower(*strA) == tolower(*strB)) ) strA++, strB++;
+    return tolower(*strA) -  tolower(*strB);
 }
 
 void percentageBar(size_t value, size_t maxValue, unsigned points, long long timePassed) {
