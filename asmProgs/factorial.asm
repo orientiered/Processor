@@ -1,17 +1,17 @@
 # Calculate factorial of given number
 
 BEGIN:
-    call ReadNumber:
+    call ReadNumber
 
     push    rax
     push    -1
     jae     END:
 
 
-    call Factorial:
+    call Factorial
     push    rax
     out
-    jmp     BEGIN:
+    jmp     BEGIN
 
 #----------
 ReadNumber:

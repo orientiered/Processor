@@ -172,7 +172,7 @@ static bool processLabel(compilerData_t *comp) {
     assert(comp);
 
     char *line = comp->codeLines[comp->lineIdx];
-    sscanf(line, "%s", comp->cmd);
+    sscanf(line, " %[a-zA-Z0-9_]:", comp->cmd);
     logPrint(L_EXTRA, 0, "\tProcessing label '%s'\n", comp->cmd);
     label_t *label = findLabel(comp->cmd, &comp->labels);
     if (label == NULL) {
@@ -197,6 +197,7 @@ static bool scanJmpLabel(compilerData_t *comp, char **line) {
     MY_ASSERT(comp && line && *line, abort());
 
     logPrint(L_EXTRA, 0, "\tJump '%s': ", comp->cmd);
+    *comp->ip |= MASK_IMMEDIATE;
     comp->ip++;
 
     int scannedChars = 0;
@@ -207,14 +208,14 @@ static bool scanJmpLabel(compilerData_t *comp, char **line) {
         return true;
     }
 
-    sscanf(*line, "%s%n", comp->cmd, &scannedChars);
-    *line += scannedChars;
-    logPrint(L_EXTRA, 0, "label = '%s'\n", comp->cmd);
-    if (!checkIsLabel(comp->cmd)) {
+    //You can use label with or without ':' at the end
+    if (sscanf(*line, " %[a-zA-Z0-9_]%n:%n ", comp->cmd, &scannedChars, &scannedChars) != 1) {
         logPrint(L_ZERO, 1, "Syntax error in %s:%zu : bad label in jump: '%s'\n",
             comp->inName, comp->lineIdx+1, comp->cmd);
         return false;
     }
+    *line += scannedChars;
+    logPrint(L_EXTRA, 0, "label = '%s'\n", comp->cmd);
 
     label_t *label = findLabel(comp->cmd, &comp->labels);
     if (label != NULL) {
@@ -245,7 +246,6 @@ static bool parseCodeLine(compilerData_t *comp) {
     assert(comp);
 
     char *line = comp->codeLines[comp->lineIdx];
-    #define IP_TO_IDX(comp) ((size_t)(comp->ip - comp->code))
     int scannedChars = 0;
     logPrint(L_EXTRA, 0, "%s:%d: '%s'\n", comp->inName, comp->lineIdx, line);
     if (checkIsLabel(line))
@@ -257,7 +257,7 @@ static bool parseCodeLine(compilerData_t *comp) {
         *comp->ip = (int)cmdToEnum(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
             return false;
-        logPrint(L_EXTRA, 0, "\tCmd: `%s` -> %d (ip = 0x%X)\n", comp->cmd, *comp->ip, IP_TO_IDX(comp));
+        logPrint(L_EXTRA, 0, "\tCmd: `%s` -> %d (ip = 0x%X)\n", comp->cmd, *comp->ip, (size_t)(comp->ip - comp->code));
 
         #define DEF_CMD_(cmdName, cmdIndex, argHandler, ...)    \
         case CMD_##cmdName: {                                   \
