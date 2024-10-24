@@ -1,24 +1,23 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "error_debug.h"
 #include "logger.h"
 #include "argvProcessor.h"
-#include "myVector.h"
-#include "compiler.h"
+#include "disasm.h"
 
-char *constructOutName(const char *inName, const char *extensionName);
+char *constructOutName(const char *inputName, const char* extensionName);
 
 int main(int argc, const char *argv[]) {
-    const char *extensionName = ".lol";
+    const char *extensionName = "_D.asm";
     logOpen();
+    setLogLevel(L_EXTRA);
 
     registerFlag(TYPE_STRING, "-i", "--input",   "Input file name");
     registerFlag(TYPE_STRING, "-o", "--output",  "Output file name(optional)");
-    registerFlag(TYPE_INT,    "-d", "--debug",   "Disable buffering and set max log level");
-    registerFlag(TYPE_BLANK,  "-l", "--listing", "Create file with asm listing");
-    enableHelpFlag("--Assembler for spu--\nUsage: ./asm.out [args]\n");
+    enableHelpFlag("--Disassembler for spu--\nUsage: ./dsm.out [args]\n");
+
     if (processArgs(argc, argv) != ARGV_SUCCESS)
         return 1;
 
@@ -27,36 +26,20 @@ int main(int argc, const char *argv[]) {
         logClose();
         return 1;
     }
-    if (isFlagSet("-d")) {
-        int dbgLevel = getFlagValue("-d").int_;
-        if (dbgLevel == 1) {
-            setLogLevel(L_DEBUG);
-            logDisableBuffering();
-        }
-        else if (dbgLevel >= 2) {
-            setLogLevel(L_EXTRA);
-            logDisableBuffering();
-        }
-    }
 
     const char *inputName = getFlagValue("-i").string_;
     char *outName = isFlagSet("-o")  ?  getFlagValue("-o").string_ :
                                         constructOutName(inputName, extensionName);
 
-    bool compileResult = compile(inputName, outName, isFlagSet("-l"));
-
-
-    if (!compileResult)
-        logPrint(L_ZERO, 1, "Compilation failed :(\n");
+    if (!disasm(inputName, outName))
+        logPrint(L_ZERO, 1, "Disassembly failed\n");
     else
-        logPrint(L_ZERO, 1, "Successfully compiled to %s\n", outName);
+        logPrint(L_ZERO, 1, "Successfully disassembled to '%s'\n", outName);
 
     if (!isFlagSet("-o"))
-            free(outName);
+        free(outName);
 
-    logClose();
-
-    return (compileResult == true) ? 0 : 1;
+    return 0;
 }
 
 char *constructOutName(const char *inputName, const char* extensionName) {
@@ -71,4 +54,7 @@ char *constructOutName(const char *inputName, const char* extensionName) {
     }
     strcat(outName, extensionName);
     return outName;
+
 }
+
+

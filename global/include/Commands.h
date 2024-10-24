@@ -1,7 +1,7 @@
-#define ARG_NONE            comp->ip += CMD_LEN
-#define ARG_PUSH_LIKE       scanArgs(comp, &line, 0)
-#define ARG_POP_LIKE        scanArgs(comp, &line, 1)
-#define ARG_LABEL           scanJmpLabel(comp, &line)
+// #define ARG_NONE
+// #define ARG_PUSH_LIKE
+// #define ARG_POP_LIKE
+// #define ARG_LABEL
 
 #define PUSH(val)           stackPush(&cpu->stk, val)
 #define POP()               stackPop(&cpu->stk)

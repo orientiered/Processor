@@ -131,7 +131,7 @@ static bool scanArgs(compilerData_t *comp, char **line, int argType) {
     return true;
 }
 
-static bool checkIsLabel(char *line) {
+static bool checkIfLabel(char *line) {
     assert(line);
     //" %[a-zA_Z0-9]%*1[:] "
     char *symbol = line;
@@ -248,7 +248,7 @@ static bool parseCodeLine(compilerData_t *comp) {
     char *line = comp->codeLines[comp->lineIdx];
     int scannedChars = 0;
     logPrint(L_EXTRA, 0, "%s:%d: '%s'\n", comp->inName, comp->lineIdx, line);
-    if (checkIsLabel(line))
+    if (checkIfLabel(line))
         return processLabel(comp);
 
     while (sscanf(line, "%s%n", comp->cmd, &scannedChars) == 1) {
@@ -259,6 +259,10 @@ static bool parseCodeLine(compilerData_t *comp) {
             return false;
         logPrint(L_EXTRA, 0, "\tCmd: `%s` -> %d (ip = 0x%X)\n", comp->cmd, *comp->ip, (size_t)(comp->ip - comp->code));
 
+        #define ARG_NONE            comp->ip += CMD_LEN
+        #define ARG_PUSH_LIKE       scanArgs(comp, &line, 0)
+        #define ARG_POP_LIKE        scanArgs(comp, &line, 1)
+        #define ARG_LABEL           scanJmpLabel(comp, &line)
         #define DEF_CMD_(cmdName, cmdIndex, argHandler, ...)    \
         case CMD_##cmdName: {                                   \
             if (!(argHandler))                                  \
@@ -283,10 +287,15 @@ static bool parseCodeLine(compilerData_t *comp) {
 /// @return Pointer to new end of the line or NULL
 static char *removeCommentFromLine(char *line, const char *separators) {
     assert(line && separators);
-
+    char *lastSpace = NULL;
     for (char *symbol = line; *symbol != '\0'; symbol++) {
+        if (isspace(*symbol)) lastSpace = symbol;
+
         for (const char *sep = separators; *sep != '\0'; sep++) {
             if (*symbol == *sep) {
+                //stripping last space characters
+                if (symbol > line && isspace(symbol[-1]) && lastSpace)
+                    symbol = lastSpace;
                 *symbol = '\0';
                 return symbol;
             }
@@ -313,7 +322,6 @@ static compilerData_t compilerDataCtor(const char *inName, const char *outName) 
     compilerData_t comp = {0};
     comp.inName  = inName;
     comp.outName = outName;
-
     comp.labels = vectorCtor(0, sizeof(label_t));
     comp.fixup  = vectorCtor(0, sizeof(jmpLabel_t));
 
@@ -323,9 +331,9 @@ static compilerData_t compilerDataCtor(const char *inName, const char *outName) 
     comp.ip = comp.code;
 
     comp.codeLines = readLinesFromFile(inName, &comp.lineCnt);
-    logPrint(L_EXTRA, 0, "------Program text---------\n");
+    // logPrint(L_EXTRA, 0, "------Program text---------\n");
     for (size_t idx = 0; idx < comp.lineCnt; idx++) {
-        logPrint(L_EXTRA, 0, "%s\n", comp.codeLines[idx]);
+        // logPrint(L_EXTRA, 0, "%s\n", comp.codeLines[idx]);
         removeCommentFromLine(comp.codeLines[idx], COMMENT_SYMBOLS);
     }
     logPrint(L_EXTRA, 0, "------Assembling started---\n");
@@ -414,7 +422,68 @@ static bool expandCodeArray(compilerData_t *comp) {
     return true;
 }
 
-bool compile(const char *inName, const char *outName) {
+// static bool isLineEmpty(const char *line) {
+//     for (const char *c = line; *c; c++)
+//         if (!isspace(*c)) return false;
+//
+//     return true;
+// }
+
+// static bool writeListingForLine(FILE *lstFile, compilerData_t *comp) {
+//     #define LST_LINE_FORMAT "%-50s"
+//     //skipping empty lines
+//     char *line = comp->codeLines[comp->lineIdx];
+//     if (isLineEmpty(line))
+//         return true;
+//
+//     fprintf(lstFile, "<%04zu> |" LST_LINE_FORMAT "| |0x%08lX| ", comp->lineIdx, line, size_t(comp->ip - comp->code));
+//
+//     if (checkIfLabel(line)) {
+//         sscanf(line, " %[a-zA-Z0-9_]:", comp->cmd);
+//         label_t label = findLabel(comp->cmd, comp->labels);
+//         fprintf(lstFile, "LABEL: '%s' |IP = 0x%08lX|\n", label.label, label.ip);
+//         return true;
+//     }
+//
+//     switch(*ip)
+//
+//     #undef LST_LINE_FORMAT
+//     return true;
+// }
+//
+// static bool writeListing(compilerData_t *comp) {
+//     assert(comp);
+//
+//     char *lstName = (char *) calloc(strlen(comp->outName) + strlen(LST_EXTENSION) + 1, sizeof(char));
+//     strcpy(lstName, comp->outName);
+//     strcat(lstName, LST_EXTENSION);
+//
+//     FILE *lstFile = fopen(lstName, "wb");
+//     free(lstName);
+//     fprintf(lstFile, "-----LISTING FOR '%s'----\n\n", comp->outName);
+//
+//     const size_t dotsCount = 40, skipCount = 16;
+//     logPrint(L_ZERO, 1, "--Writing listing--\n");
+//     clock_t listingTime = 0;
+//     clock_t startTime = clock();
+//
+//     comp->lineIdx = 0;
+//     comp->ip = comp->code;
+//     while (comp->lineIdx < comp->lineCnt) {
+//         writeListingForLine(lstFile, comp);
+//
+//         comp->lineIdx++;
+//         listingTime = clock() - startTime;
+//         if (comp->lineIdx % skipCount == 0)
+//             percentageBar(comp->lineIdx, comp->lineCnt, dotsCount, listingTime);
+//     }
+//     percentageBar(comp->lineIdx, comp->lineCnt, dotsCount, listingTime);
+//     fclose(lstFile);
+//     return true;
+//
+// }
+
+bool compile(const char *inName, const char *outName, bool makeListing) {
     assert(inName && outName);
 
     logPrint(L_ZERO, 1, "--Reading program--\n");
@@ -439,6 +508,7 @@ bool compile(const char *inName, const char *outName) {
         if (comp.lineIdx % skipCount == 0)
             percentageBar(comp.lineIdx, comp.lineCnt, dotsCount, compilingTime);
     }
+    percentageBar(comp.lineIdx, comp.lineCnt, dotsCount, compilingTime);
 
     logPrint(L_ZERO, 1, "\n--Fixing labels--\n");
     if (!fixupLabels(&comp)) {
@@ -446,8 +516,18 @@ bool compile(const char *inName, const char *outName) {
         return false;
     }
 
-    logPrint(L_ZERO, 1, "--Writing assembled code--\n");
-    bool compilationResult = writeCodeToFile(&comp);
+    logPrint(L_ZERO, 1, "\n--Writing assembled code--\n");
+    if (!writeCodeToFile(&comp)) {
+        logPrint(L_ZERO, 1, "\nWriting failed\n");
+        return false;
+    }
+    if (makeListing)
+        logPrint(L_ZERO, 1, "Listing not supported yet :(\n");
+    // if (makeListing && !writeListing(&comp)) {
+    //     logPrint(L_ZERO, 1, "\nListing failed\n");
+    //     return false;
+    // }
+
     compilerDataDtor(&comp);
-    return compilationResult;
+    return true;
 }

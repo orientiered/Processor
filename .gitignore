@@ -7,8 +7,7 @@ global/build
 containers/build
 
 log.txt
-spu.out
-asm.out
+*.out
 bad-apple-converter/converter.out
 bad-apple-converter/*.asm
 input.txt

@@ -4,13 +4,16 @@ ifeq ($(origin CC),default)
 	CC=g++
 endif
 
-all:spu asm
+all:spu asm dsm
 .PHONY: spu
 spu:
 	cd spu && $(MAKE) CC=$(CC) BUILD=$(BUILD)
 .PHONY: asm
 asm:
 	cd asm && $(MAKE) CC=$(CC) BUILD=$(BUILD)
+
+dsm:
+	cd disasm && $(MAKE) CC=$(CC) BUILD=$(BUILD)
 
 badApple: asm
 	cd bad-apple-converter && $(MAKE) && ./converter.out
