@@ -15,10 +15,10 @@ int main(int argc, const char *argv[]) {
     logOpen();
 
     registerFlag(TYPE_STRING, "-i", "--input", "Input file name");
-    registerFlag(TYPE_STRING, "-o", "--o", "Output file name");
+    registerFlag(TYPE_STRING, "-o", "--o", "Output file name(optional)");
     registerFlag(TYPE_INT,    "-d", "--debug", "Disable buffering and set max log level");
-
-    if (processArgs(argc, argv) != SUCCESS)
+    enableHelpFlag("--Assembler for spu--\nUsage: ./asm.out [args]\n");
+    if (processArgs(argc, argv) != ARGV_SUCCESS)
         return 1;
 
     if (!isFlagSet("-i")) {

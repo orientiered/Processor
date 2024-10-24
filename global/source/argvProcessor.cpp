@@ -15,6 +15,7 @@ static flagDescriptor_t flagsDescriptions[MAX_REGISTERED_FLAGS] = {};
 static size_t registeredFlagsCount_ = 0;
 static FlagsHolder_t flags = {};
 static const char* helpMessageHeader_ = NULL;
+static bool helpMessageEnabled = false;
 
 /*!
     @brief Scan argument in full form (--encode)
@@ -57,35 +58,47 @@ static int scanShortArguments(int remainToScan, const char *argv[]);
 static int scanToFlag(flagDescriptor_t desc, int remainToScan, const char *argv[]);
 
 static flagVal_t *findFlag(const char *flagName);
-static enum status addFlag(flagDescriptor_t desc, fVal_t val);
+static enum argvStatus addFlag(flagDescriptor_t desc, fVal_t val);
 
 /*
     @brief concatenate strings with given separator string
 */
 static char* joinStrings(const char **strings, size_t len, const char *separator);
 
-enum status setHelpMessageHeader(const char* header) {
+enum argvStatus setHelpMessageHeader(const char* header) {
+    MY_ASSERT(header, abort());
     helpMessageHeader_ = header;
-    return SUCCESS;
+    return ARGV_SUCCESS;
 }
 
-enum status registerFlag(enum flagType type,
+enum argvStatus enableHelpFlag(const char *header) {
+    MY_ASSERT(header, abort());
+    enum argvStatus result = registerFlag(TYPE_BLANK, "-h", "--help", "Prints help message");
+    if (result != ARGV_SUCCESS) return result;
+    result = setHelpMessageHeader(header);
+    helpMessageEnabled = true;
+    return result;
+}
+
+enum argvStatus registerFlag(enum flagType type,
                          const char* shortName,
                          const char* fullName,
                          const char* helpMessage) {
     flagDescriptor_t flagInfo = {type, shortName, fullName, helpMessage};
     if (registeredFlagsCount_ < MAX_REGISTERED_FLAGS) {
         flagsDescriptions[registeredFlagsCount_++] = flagInfo;
-        return SUCCESS;
+        return ARGV_SUCCESS;
     } else
-        return ERROR;
+        return ARGV_ERROR;
 }
 
-enum status processArgs(int argc, const char *argv[]) {
+
+enum argvStatus processArgs(int argc, const char *argv[]) {
+    MY_ASSERT(argv);
     static bool isProcessed = false;
     if (isProcessed) {
         logPrint(L_ZERO, 1, "Multiple argv processing is forbidden\n");
-        return ERROR;
+        return ARGV_ERROR;
     }
     isProcessed = true;
 
@@ -93,7 +106,7 @@ enum status processArgs(int argc, const char *argv[]) {
 
     if (!flags.flags) {
         LOG_PRINT(L_DEBUG, 0, "Memory allocation failed\n");
-        return ERROR;
+        return ARGV_ERROR;
     }
     flags.reserved = registeredFlagsCount_;
 
@@ -112,7 +125,8 @@ enum status processArgs(int argc, const char *argv[]) {
         if (remainToScan < 0) { //remainToScan < 0 is universal error code
             deleteFlags();
             logPrint(L_ZERO, 1, "Wrong flags format\n");
-            return ERROR;
+            printHelpMessage();
+            return ARGV_ERROR;
         }
         i  = argc - remainToScan; //moving to next arguments
     }
@@ -123,10 +137,15 @@ enum status processArgs(int argc, const char *argv[]) {
     free(argvConcatenated);
 
     atexit(deleteFlags); //registering free function to delete flags at exit
-    return SUCCESS;
+
+    if (helpMessageEnabled && isFlagSet("-h"))
+        return printHelpMessage();
+
+    return ARGV_SUCCESS;
 }
 
 static int scanFullArgument(int remainToScan, const char *argv[]) {
+    MY_ASSERT(argv);
     for (size_t flagIndex = 0; flagIndex < registeredFlagsCount_; flagIndex++) {        //just iterating over all flags
         if (strcmp(argv[0], flagsDescriptions[flagIndex].flagFullName) != 0) continue;
         return scanToFlag(flagsDescriptions[flagIndex], remainToScan, argv + 1) - 1;                  //we pass remainToScan forward
@@ -135,6 +154,7 @@ static int scanFullArgument(int remainToScan, const char *argv[]) {
 }
 
 static int scanShortArguments(int remainToScan, const char *argv[]) {
+    MY_ASSERT(argv);
     for (const char *shortName = argv[0]+1; (*shortName != '\0') && (remainToScan > 0); shortName++) { //iterating over short flags string
         bool scannedArg = false;
         for (size_t flagIndex = 0; flagIndex < registeredFlagsCount_; flagIndex++) {
@@ -152,6 +172,7 @@ static int scanShortArguments(int remainToScan, const char *argv[]) {
 }
 
 static int scanToFlag(flagDescriptor_t desc, int remainToScan, const char *argv[]) {
+    MY_ASSERT(argv);
     fVal_t val = {};
 
     if (desc.type != TYPE_BLANK) {
@@ -179,7 +200,7 @@ static int scanToFlag(flagDescriptor_t desc, int remainToScan, const char *argv[
         }
     }
 
-    if (addFlag(desc, val) != SUCCESS) {
+    if (addFlag(desc, val) != ARGV_SUCCESS) {
         if (desc.type == TYPE_STRING)
             FREE(val.string_);
         return -1;
@@ -187,14 +208,15 @@ static int scanToFlag(flagDescriptor_t desc, int remainToScan, const char *argv[
     return remainToScan;
 }
 
-void printHelpMessage() {           //building help message from flags descriptions
+enum argvStatus printHelpMessage() {           //building help message from flags descriptions
     if (helpMessageHeader_)
         printf("%s", helpMessageHeader_);
     printf("Available flags:\n");
     for (size_t i = 0; i < registeredFlagsCount_; i++) {
-        printf("%5s,%10s %s\n", flagsDescriptions[i].flagShortName, flagsDescriptions[i].flagFullName, flagsDescriptions[i].flagHelp);
+        printf("%4s, %-10s %s\n", flagsDescriptions[i].flagShortName, flagsDescriptions[i].flagFullName, flagsDescriptions[i].flagHelp);
     }
     printf("orientiered, MIPT 2024\n");
+    return ARGV_HELP_MSG;
 }
 
 static flagVal_t *findFlag(const char *flagName) {
@@ -208,31 +230,33 @@ static flagVal_t *findFlag(const char *flagName) {
 }
 
 bool isFlagSet(const char *flagName) {
+    MY_ASSERT(flagName, abort());
     return findFlag(flagName) != NULL;
 }
 
 fVal_t getFlagValue(const char *flagName) {
+    MY_ASSERT(flagName, abort());
     flagVal_t *flag = findFlag(flagName);
     if (flag != NULL) return flag->val;
     fVal_t result = {};
     return result;
 }
 
-static enum status addFlag(flagDescriptor_t desc, fVal_t val) {
+static enum argvStatus addFlag(flagDescriptor_t desc, fVal_t val) {
     logPrint(L_DEBUG, 0, "Adding %s flag\n", desc.flagFullName);
     if (findFlag(desc.flagShortName) != NULL) {
         logPrint(L_ZERO, 1, "Repeating flags not accepted\n");
-        return ERROR; //don't accept repeating flags
+        return ARGV_ERROR; //don't accept repeating flags
     }
     if (flags.size == flags.reserved) {
         logPrint(L_ZERO, 1, "Number of flags is limited by %lu\n", flags.reserved);
-        return ERROR;
+        return ARGV_ERROR;
     }
 
     flags.flags[flags.size].desc = desc;
     flags.flags[flags.size].val = val;
     flags.size++;
-    return SUCCESS;
+    return ARGV_SUCCESS;
 }
 
 void deleteFlags() {
@@ -244,6 +268,8 @@ void deleteFlags() {
 }
 
 static char* joinStrings(const char **strings, size_t len, const char *separator) {
+    MY_ASSERT(strings && separator, abort());
+
     size_t fullLen = 0;
     for (size_t idx = 0; idx < len; idx++)
         fullLen += strlen(strings[idx]);

@@ -8,6 +8,12 @@
 
 const size_t MAX_REGISTERED_FLAGS = 50;   ///< maximum amount of flags
 
+enum argvStatus {
+    ARGV_SUCCESS  = 0,
+    ARGV_ERROR    = 1,
+    ARGV_HELP_MSG = 2,
+};
+
 /// @brief Available types for cmd args
 enum flagType {
     TYPE_BLANK = 0,     ///< Doesn't expect next argument
@@ -48,12 +54,13 @@ typedef struct FlagsHolder {
 
 
 /// @brief Set header of help message
-enum status setHelpMessageHeader(const char* header);
+enum argvStatus setHelpMessageHeader(const char* header);
+enum argvStatus enableHelpFlag(const char *header);
 
 /*!
     @brief register cmd argument flag
 */
-enum status registerFlag(enum flagType type,
+enum argvStatus registerFlag(enum flagType type,
                          const char* shortName,
                          const char* fullName,
                          const char* helpMessage);
@@ -62,14 +69,14 @@ enum status registerFlag(enum flagType type,
 
     @return SUCCESS if parsed correctly, ERROR otherwise
 */
-enum status processArgs(int argc, const char *argv[]);
+enum argvStatus processArgs(int argc, const char *argv[]);
 
 /*!
     @brief Prints help message containing descriptions of all flags
 
     Prints all argHelps in args array
 */
-void printHelpMessage();
+enum argvStatus printHelpMessage();
 
 /// @brief Check if flag with given name is set
 bool isFlagSet(const char *flagName);
