@@ -109,11 +109,12 @@ static int* getArgs(cpu_t *cpu, int argType) {
         temp    += *cpu->ip;
         cpu->ip += ARG_LEN;
     }
+    // index = integer part of number
     if (MEMORY) {
         if (result != NULL)
-            result = cpu->ram + *result + temp;
+            result = cpu->ram + (*result + temp) / FP_EXPONENT;
         else
-            result = cpu->ram + temp;
+            result = cpu->ram + temp / FP_EXPONENT;
     }
 
     logPrint(L_EXTRA, 0, "operation %x, \ttemp = %d\n", command, temp);

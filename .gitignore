@@ -5,6 +5,7 @@ spu/build
 asm/build
 global/build
 containers/build
+disasm/build
 
 log.txt
 *.out

@@ -20,15 +20,17 @@
 #define GET_ARG_PUSH        *getArgs(cpu, 0)
 #define GET_ARG_POP         *getArgs(cpu, 1)
 
-#define MATH_TWO(mathOp)            \
-    CHECK_STK_SIZE(2);              \
-    int a = POP(), b = POP();       \
-    PUSH(b mathOp a);               \
+#define MATH_TWO(mathOp)                        \
+    CHECK_STK_SIZE(2);                          \
+    float a = float(POP()) / FP_EXPONENT;       \
+    float b = float(POP()) / FP_EXPONENT;       \
+    PUSH(int(FP_EXPONENT * (b mathOp a)));      \
     IP += CMD_LEN;
 
-#define MATH_ONE(mathFunc)          \
-    CHECK_STK_SIZE(1);              \
-    PUSH(mathFunc(POP()));          \
+#define MATH_ONE(mathFunc)                  \
+    CHECK_STK_SIZE(1);                      \
+    float a = float(POP()) / FP_EXPONENT;   \
+    PUSH(int(FP_EXPONENT * mathFunc(a)));   \
     IP += CMD_LEN;
 
 #define COND_JUMP(condSign)         \
@@ -88,28 +90,28 @@ DEF_CMD_(JNE,   19, ARG_LABEL, {COND_JUMP(!=)})
 
 DEF_CMD_(SLEEP, 20, ARG_PUSH_LIKE,
 {
-    usleep(GET_ARG_PUSH * 1000);
+    usleep(GET_ARG_PUSH * 1000 / FP_EXPONENT);
 })
 DEF_CMD_(TIME,  21, ARG_NONE,
 {
     gettimeofday(&currentTime, NULL);
     int timeInMs = ((currentTime.tv_sec  - startTime.tv_sec) * 1000000 +
                     (currentTime.tv_usec - startTime.tv_usec)) / 1000;
-    PUSH(timeInMs);
+    PUSH(timeInMs * FP_EXPONENT);
     IP += CMD_LEN;
 })
 
 DEF_CMD_(IN,    22, ARG_NONE,
 {
-    int val = 0;
-    scanf("%d", &val);
-    PUSH(val);
+    float val = 0;
+    scanf("%f", &val);
+    PUSH(int(val * FP_EXPONENT));
     IP += CMD_LEN;
 })
 DEF_CMD_(OUT,   23, ARG_NONE,
 {
     CHECK_STK_SIZE(1);
-    printf("%d\n", POP());
+    printf("%.3f\n", float(POP()) / FP_EXPONENT);
     IP += CMD_LEN;
 })
 DEF_CMD_(DRAW,  24, ARG_NONE,

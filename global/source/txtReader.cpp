@@ -36,7 +36,8 @@ enum status getFileSize(const char *fileName, size_t *size) {
 char **readLinesFromFile(const char *fileName, size_t *linesNum) {
     MY_ASSERT(fileName, abort());
     size_t size = 0;
-    getFileSize(fileName, &size);
+    if (getFileSize(fileName, &size) != SUCCESS)
+        return NULL;
     if (size == 0) {
         logPrint(L_ZERO, 1, "Something wrong with file '%s'\n", fileName);
         return NULL;

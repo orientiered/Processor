@@ -8,7 +8,10 @@ typedef struct {
 } programHeader_t;
 
 const char * const CPU_SIGNATURE = "ORI-D-_-";
-const int CPU_CMD_VERSION = 5;
+const int CPU_CMD_VERSION = 6;
+
+/// Float values are stored using fixed precision
+const int FP_EXPONENT = 1000;
 
 /// Constants for draw command
 const size_t DRAW_HEIGHT = 36;

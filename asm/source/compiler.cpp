@@ -71,41 +71,32 @@ static bool scanArgs(compilerData_t *comp, char **line, int argType) {
     int scannedChars = 0;
     int *cmdPtr = comp->ip;
     comp->ip += CMD_LEN;
-    if (sscanf(*line, " [ %d ] %n", comp->ip, &scannedChars) == 1 && scannedChars != 0) {
-        *cmdPtr  |= MASK_MEMORY + MASK_IMMEDIATE;
-        comp->ip += ARG_LEN;
-    } else
-    if (sscanf(*line, " [ %[^] \t\n+] ] %n", comp->cmd, &scannedChars) == 1 && scannedChars != 0) {
-        *cmdPtr  |= MASK_MEMORY + MASK_REGISTER;
+    float scannedNumber = 0;
+    bool MEMORY = false, REGISTER = false, IMMEDIATE = false;
+
+    if      (sscanf(*line, " [ %f ] %n",             &scannedNumber, &scannedChars) == 1 && scannedChars != 0)
+        MEMORY = IMMEDIATE = true;
+    else if (sscanf(*line, " [ %[^] \t\n+] ] %n",    comp->cmd, &scannedChars) == 1 && scannedChars != 0)
+        MEMORY = REGISTER = true;
+    else if (sscanf(*line, " [ %[^] +\t] + %f ] %n", comp->cmd, &scannedNumber, &scannedChars) == 2 && scannedChars != 0)
+        MEMORY = REGISTER = IMMEDIATE = true;
+    else if (sscanf(*line, " %f %n",                 &scannedNumber, &scannedChars) == 1)
+        IMMEDIATE = true;
+    else if (sscanf(*line, " %[^ \t\n+] + %f %n",    comp->cmd, &scannedNumber, &scannedChars) == 2)
+        REGISTER = IMMEDIATE = true;
+    else if (sscanf(*line, " %s %n",                 comp->cmd, &scannedChars) == 1)
+        REGISTER = true;
+
+    *cmdPtr |= MASK_MEMORY * MEMORY + MASK_REGISTER * REGISTER + MASK_IMMEDIATE * IMMEDIATE;
+    if (REGISTER) {
         *comp->ip = cmdToReg(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
             return false;
         comp->ip += REG_LEN;
-    } else
-    if (sscanf(*line, " [ %[^] +\t] + %d ] %n", comp->cmd, comp->ip + REG_LEN, &scannedChars) == 2 && scannedChars != 0) {
-            *cmdPtr |= MASK_MEMORY + MASK_IMMEDIATE + MASK_REGISTER;
-            *comp->ip = cmdToReg(comp->cmd);
-            if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
-                return false;
-            comp->ip += REG_LEN + ARG_LEN;
-    } else
-    if (sscanf(*line, "%d%n", comp->ip, &scannedChars) == 1) {
-        *cmdPtr |= MASK_IMMEDIATE;
+    }
+    if (IMMEDIATE) {
+        *comp->ip = int(scannedNumber * FP_EXPONENT);
         comp->ip += ARG_LEN;
-    } else
-    if (sscanf(*line, " %[^ \t\n+] + %d %n", comp->cmd, comp->ip + REG_LEN, &scannedChars) == 2) {
-        *cmdPtr |= MASK_REGISTER + MASK_IMMEDIATE;
-        *comp->ip = cmdToReg(comp->cmd);
-        if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
-            return false;
-        comp->ip += REG_LEN + ARG_LEN;
-    } else
-    if (sscanf(*line, " %s %n", comp->cmd, &scannedChars) == 1) {
-        *cmdPtr |= MASK_REGISTER;
-        *comp->ip = cmdToReg(comp->cmd);
-        if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
-            return false;
-        comp->ip += REG_LEN;
     }
 
     *line += scannedChars;
@@ -118,16 +109,12 @@ static bool scanArgs(compilerData_t *comp, char **line, int argType) {
         else
             logPrint(L_ZERO, 1, "wrong pop-like  arguments:\n");
 
-        logPrint(L_ZERO, 1, "\tMEMORY = %d, REGISTER = %d, IMMEDIATE = %d\n", bool(*cmdPtr & MASK_MEMORY),
-                                                                              bool(*cmdPtr & MASK_REGISTER),
-                                                                              bool(*cmdPtr & MASK_IMMEDIATE));
+        logPrint(L_ZERO, 1, "\tMEMORY = %d, REGISTER = %d, IMMEDIATE = %d\n", MEMORY, REGISTER, IMMEDIATE);
         return false;
     }
 
     logPrint(L_EXTRA, 0, "\tip =  0x%X\n", (size_t)(comp->ip - comp->code));
-    logPrint(L_EXTRA, 0, "\tMEMORY = %d, REGISTER = %d, IMMEDIATE = %d\n", bool(*cmdPtr & MASK_MEMORY),
-                                                                           bool(*cmdPtr & MASK_REGISTER),
-                                                                           bool(*cmdPtr & MASK_IMMEDIATE));
+    logPrint(L_EXTRA, 0, "\tMEMORY = %d, REGISTER = %d, IMMEDIATE = %d\n", MEMORY, REGISTER, IMMEDIATE);
     return true;
 }
 
@@ -315,38 +302,12 @@ static bool checkSyntaxError(compilerData_t *comp, enum CMD_OPS error) {
     return false;
 }
 
-
-static compilerData_t compilerDataCtor(const char *inName, const char *outName) {
-    assert(inName && outName);
-
-    compilerData_t comp = {0};
-    comp.inName  = inName;
-    comp.outName = outName;
-    comp.labels = vectorCtor(0, sizeof(label_t));
-    comp.fixup  = vectorCtor(0, sizeof(jmpLabel_t));
-
-    memset(&comp.cmd, 0, MAX_CMD_SIZE);
-    comp.code = (int *) calloc(START_CODE_SIZE, sizeof(int));
-    comp.reserved = START_CODE_SIZE;
-    comp.ip = comp.code;
-
-    comp.codeLines = readLinesFromFile(inName, &comp.lineCnt);
-    // logPrint(L_EXTRA, 0, "------Program text---------\n");
-    for (size_t idx = 0; idx < comp.lineCnt; idx++) {
-        // logPrint(L_EXTRA, 0, "%s\n", comp.codeLines[idx]);
-        removeCommentFromLine(comp.codeLines[idx], COMMENT_SYMBOLS);
-    }
-    logPrint(L_EXTRA, 0, "------Assembling started---\n");
-    comp.lineIdx = 0;
-
-    return comp;
-}
-
 static bool compilerDataDtor(compilerData_t *comp) {
     assert(comp);
 
     free(comp->code);
-    free(comp->codeLines[0]);
+    if (comp->codeLines != NULL)
+        free(comp->codeLines[0]);
     free(comp->codeLines);
 
     for (size_t idx = 0; idx < comp->labels.size; idx++)
@@ -356,6 +317,36 @@ static bool compilerDataDtor(compilerData_t *comp) {
     logPrint(L_EXTRA, 0, "------Compilation end------\n");
     return true;
 }
+
+static bool compilerDataCtor(compilerData_t *comp, const char *inName, const char *outName) {
+    assert(inName && outName);
+
+    comp->inName  = inName;
+    comp->outName = outName;
+    comp->labels  = vectorCtor(0, sizeof(label_t));
+    comp->fixup   = vectorCtor(0, sizeof(jmpLabel_t));
+
+    memset(&comp->cmd, 0, MAX_CMD_SIZE);
+    comp->code = (int *) calloc(START_CODE_SIZE, sizeof(int));
+    comp->reserved = START_CODE_SIZE;
+    comp->ip = comp->code;
+
+    comp->codeLines = readLinesFromFile(inName, &comp->lineCnt);
+    if (!comp->codeLines) {
+        compilerDataDtor(comp);
+        return false;
+    }
+    // logPrint(L_EXTRA, 0, "------Program text---------\n");
+    for (size_t idx = 0; idx < comp->lineCnt; idx++) {
+        // logPrint(L_EXTRA, 0, "%s\n", comp.codeLines[idx]);
+        removeCommentFromLine(comp->codeLines[idx], COMMENT_SYMBOLS);
+    }
+    logPrint(L_EXTRA, 0, "------Assembling started---\n");
+    comp->lineIdx = 0;
+
+    return true;
+}
+
 
 static bool writeCodeToFile(compilerData_t *comp) {
     assert(comp);
@@ -487,7 +478,10 @@ bool compile(const char *inName, const char *outName, bool makeListing) {
     assert(inName && outName);
 
     logPrint(L_ZERO, 1, "--Reading program--\n");
-    compilerData_t comp = compilerDataCtor(inName, outName);
+    compilerData_t comp = {0};
+    if (!compilerDataCtor(&comp, inName, outName)) {
+        return false;
+    }
 
     const size_t dotsCount = 40, skipCount = 16;
     logPrint(L_ZERO, 1, "--Parsing lines--\n");
