@@ -103,7 +103,7 @@ int main() {
 
     fprintf(out, "in\n pop rbx\n");
     readFrame(oldFrame, 1);
-    writeFrame(out, NULL, oldFrame);
+    writeFrame(out, oldFrame, oldFrame);
 
     clock_t convertingTime = 0, startTime = clock();
 
@@ -123,9 +123,9 @@ int main() {
     fprintf(out, "hlt\n");
     fprintf(out,
     "\nDRWAIT:\n"
-    "\ttime push rax sub\n"
+    "\ttime\npush rax\nsub\n"
     "\tpush rbx\n"
-    "\tjae DRWAIT:\n"
+    "\tjbe DRWAIT:\n"
     "\ttime pop rax\n"
     "\tdrawr\n"
     "ret\n"
@@ -136,7 +136,7 @@ int main() {
     "fillStart:\n"
     "    push    rex\n"
     "    push    rdx\n"
-    "    jbe     fillEnd:\n"
+    "    jae     fillEnd:\n"
     "    push    rcx\n"
     "    pop     [rex]\n\n"
     "    push    rex + 1\n"

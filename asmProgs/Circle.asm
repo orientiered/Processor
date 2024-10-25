@@ -28,14 +28,14 @@ fillCircle:
     LOOP1_START:
         push    rbx
         push    36
-        jbe     LOOP1_END:
+        jae     LOOP1_END:
 
         push    0
         pop     rcx
     LOOP2_START:
         push    rcx
         push    96
-        jbe     LOOP2_END:
+        jae     LOOP2_END:
 
         push    96
         push    rbx
@@ -70,7 +70,7 @@ fillCircle:
         mul
         add
 
-        ja      SKIP_PIXEL:
+        jb      SKIP_PIXEL:
         push    1
         pop     [rdx]
     SKIP_PIXEL:
@@ -99,13 +99,13 @@ updateRax:
     #   rex = 5
     push    300
     push    rax
-    jbe     ELSE1:
+    jae     ELSE1:
     push    -5
     pop     rex
 ELSE1:
     push    rax
     push    1
-    jbe     ELSE2:
+    jae     ELSE2:
     push    5
     pop     rex
 ELSE2:

@@ -36,7 +36,7 @@
 #define COND_JUMP(condSign)         \
     CHECK_STK_SIZE(2);              \
     int a = POP(), b = POP();       \
-    if (a condSign b)               \
+    if (b condSign a)               \
         MAKE_JMP;                   \
     else                            \
         IP += CMD_LEN + ARG_LEN;
@@ -58,7 +58,7 @@ DEF_CMD_(POP,   2,  ARG_POP_LIKE,
 DEF_CMD_(ADD,   3,  ARG_NONE, {MATH_TWO(+)})
 DEF_CMD_(SUB,   4,  ARG_NONE, {MATH_TWO(-)})
 DEF_CMD_(MUL,   5,  ARG_NONE, {MATH_TWO(*)})
-DEF_CMD_(DIV,   6,  ARG_NONE, {MATH_TWO(/)})
+DEF_CMD_(DIV,   6,  ARG_NONE, {MATH_TWO(/)}) //TODO: check zero
 DEF_CMD_(SQRT,  7,  ARG_NONE, {MATH_ONE(sqrt)})
 DEF_CMD_(SIN,   8,  ARG_NONE, {MATH_ONE(sin)})
 DEF_CMD_(COS,   9,  ARG_NONE, {MATH_ONE(cos)})

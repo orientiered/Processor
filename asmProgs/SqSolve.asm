@@ -51,10 +51,12 @@ solveLinear:
     push -1
     pop  rax
     ret
+
 C_NOT_ZERO:
     push -1
     push rax
     ret
+
 B_NOT_ZERO:
     push [3] ; c
     push -1
@@ -141,7 +143,7 @@ calcDiscriminant:
 
     push 0
     push rbx
-    jae  posValue
+    jbe  posValue
     push -1  ; -1 signals that sqrt cannot be calculated
     pop  rax
     ret

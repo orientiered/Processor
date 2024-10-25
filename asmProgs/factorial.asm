@@ -5,7 +5,7 @@ BEGIN:
 
     push    rax
     push    -1
-    jae     END:
+    jbe     END:
 
 
     call Factorial
@@ -24,7 +24,7 @@ ReadNumber:
 Factorial:
     push    rax
     push    1
-    jbe     Factorial_main:      ; jump when rax > 1
+    ja      Factorial_main:      ; jump when rax > 1
     push    1                    ; factorial(n) = 1, n = 0 or 1
     pop     rax
     ret
