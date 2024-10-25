@@ -13,7 +13,7 @@ ANIM_START:
     ;dump
     call    fillCircle:
     drawr
-    sleep   10
+    ;sleep   0
     ;dump
     call    updateRax:
     ;dump

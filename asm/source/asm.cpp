@@ -18,20 +18,15 @@ int main(int argc, const char *argv[]) {
     registerFlag(TYPE_STRING, "-o", "--output",  "Output file name(optional)");
     registerFlag(TYPE_INT,    "-d", "--debug",   "Disable buffering and set max log level");
     registerFlag(TYPE_BLANK,  "-l", "--listing", "Create file with asm listing");
-    enableHelpFlag("--Assembler for spu--\nUsage: ./asm.out [args]\n");
+    enableHelpFlag("--Assembler for spu--\nUsage: ./asm.out [args].. file\n\t'file' has higher priority than -i flag\n");
     if (processArgs(argc, argv) != ARGV_SUCCESS)
         return 1;
 
-    if (!isFlagSet("-i")) {
-        logPrint(L_ZERO, 1, "No input file\n");
-        logClose();
-        return 1;
-    }
     if (isFlagSet("-d")) {
         int dbgLevel = getFlagValue("-d").int_;
         if (dbgLevel == 1) {
             setLogLevel(L_DEBUG);
-            logDisableBuffering();
+            //logDisableBuffering();
         }
         else if (dbgLevel >= 2) {
             setLogLevel(L_EXTRA);
@@ -39,7 +34,15 @@ int main(int argc, const char *argv[]) {
         }
     }
 
-    const char *inputName = getFlagValue("-i").string_;
+    const char *inputName = "program.asm";
+    if (getDefaultArgument(0) != NULL) {
+        inputName = getDefaultArgument(0);
+    } else if (isFlagSet("-i")) {
+        inputName = getFlagValue("-i").string_;
+    } else {
+        logPrint(L_ZERO, 1, "Using default input file: %s\n", inputName);
+    }
+
     char *outName = isFlagSet("-o")  ?  getFlagValue("-o").string_ :
                                         constructOutName(inputName, extensionName);
 

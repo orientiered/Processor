@@ -87,7 +87,7 @@ static bool scanArgs(compilerData_t *comp, char **line, int argType) {
     else if (sscanf(*line, " %s %n",                 comp->cmd, &scannedChars) == 1)
         REGISTER = true;
 
-    *cmdPtr |= MASK_MEMORY * MEMORY + MASK_REGISTER * REGISTER + MASK_IMMEDIATE * IMMEDIATE;
+    *cmdPtr |= (MASK_MEMORY * MEMORY) | (MASK_REGISTER * REGISTER) | (MASK_IMMEDIATE * IMMEDIATE);
     if (REGISTER) {
         *comp->ip = cmdToReg(comp->cmd);
         if (checkSyntaxError(comp, CMD_OPS(*comp->ip)))
@@ -250,6 +250,7 @@ static bool parseCodeLine(compilerData_t *comp) {
         #define ARG_PUSH_LIKE       scanArgs(comp, &line, 0)
         #define ARG_POP_LIKE        scanArgs(comp, &line, 1)
         #define ARG_LABEL           scanJmpLabel(comp, &line)
+
         #define DEF_CMD_(cmdName, cmdIndex, argHandler, ...)    \
         case CMD_##cmdName: {                                   \
             if (!(argHandler))                                  \
@@ -265,6 +266,7 @@ static bool parseCodeLine(compilerData_t *comp) {
                 break;
             }
         }
+
         #undef DEF_CMD_
     }
     return true;
@@ -357,12 +359,7 @@ static bool writeCodeToFile(compilerData_t *comp) {
     size_t codeSize = size_t(comp->ip - comp->code);
     programHeader_t hdr = {*(const uint64_t *) CPU_SIGNATURE, CPU_CMD_VERSION, codeSize};
     fwrite(&hdr, 1, sizeof(hdr), outFile);
-    //fprintf(outFile, "\n");
-    // fprintf(outFile, "%s ", CPU_SIGNATURE);
-    // fprintf(outFile, "%d %zu\n", CPU_CMD_VERSION, codeSize);
-    // for (size_t idx = 0; idx < codeSize; idx++) {
-    //     fprintf(outFile, "%x ", comp->code[idx]); //TODO: Format
-    // }
+
     if (fwrite(comp->code, sizeof(int), codeSize, outFile) != codeSize) {
         logPrint(L_ZERO, 1, "Failed to write code in file\n");
         return false;

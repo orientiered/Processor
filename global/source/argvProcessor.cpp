@@ -13,6 +13,8 @@
 
 static flagDescriptor_t flagsDescriptions[MAX_REGISTERED_FLAGS] = {};
 static size_t registeredFlagsCount_ = 0;
+static const char *defaultArgs[MAX_DEFAULT_ARGS] = {};
+static size_t defaultArgsCount_ = 0;
 static FlagsHolder_t flags = {};
 static const char* helpMessageHeader_ = NULL;
 static bool helpMessageEnabled = false;
@@ -92,9 +94,14 @@ enum argvStatus registerFlag(enum flagType type,
         return ARGV_ERROR;
 }
 
+const char *getDefaultArgument(size_t idx) {
+    if (idx < defaultArgsCount_)
+        return defaultArgs[idx];
+    return NULL;
+}
 
 enum argvStatus processArgs(int argc, const char *argv[]) {
-    MY_ASSERT(argv);
+    MY_ASSERT(argv, abort());
     static bool isProcessed = false;
     if (isProcessed) {
         logPrint(L_ZERO, 1, "Multiple argv processing is forbidden\n");
@@ -112,6 +119,8 @@ enum argvStatus processArgs(int argc, const char *argv[]) {
 
     for (int i = 1; i < argc;) {
         if (argv[i][0] != '-')  {   //all arguments start with -
+            if (defaultArgsCount_ != MAX_DEFAULT_ARGS)
+                defaultArgs[defaultArgsCount_++] = argv[i];
             i++;                    //parameters of args are skipped inside scan...Argument() functions
             continue;
         }
@@ -145,7 +154,7 @@ enum argvStatus processArgs(int argc, const char *argv[]) {
 }
 
 static int scanFullArgument(int remainToScan, const char *argv[]) {
-    MY_ASSERT(argv);
+    MY_ASSERT(argv, abort());
     for (size_t flagIndex = 0; flagIndex < registeredFlagsCount_; flagIndex++) {        //just iterating over all flags
         if (strcmp(argv[0], flagsDescriptions[flagIndex].flagFullName) != 0) continue;
         return scanToFlag(flagsDescriptions[flagIndex], remainToScan, argv + 1) - 1;                  //we pass remainToScan forward
@@ -154,7 +163,7 @@ static int scanFullArgument(int remainToScan, const char *argv[]) {
 }
 
 static int scanShortArguments(int remainToScan, const char *argv[]) {
-    MY_ASSERT(argv);
+    MY_ASSERT(argv, abort());
     for (const char *shortName = argv[0]+1; (*shortName != '\0') && (remainToScan > 0); shortName++) { //iterating over short flags string
         bool scannedArg = false;
         for (size_t flagIndex = 0; flagIndex < registeredFlagsCount_; flagIndex++) {
@@ -172,7 +181,7 @@ static int scanShortArguments(int remainToScan, const char *argv[]) {
 }
 
 static int scanToFlag(flagDescriptor_t desc, int remainToScan, const char *argv[]) {
-    MY_ASSERT(argv);
+    MY_ASSERT(argv, abort());
     fVal_t val = {};
 
     if (desc.type != TYPE_BLANK) {

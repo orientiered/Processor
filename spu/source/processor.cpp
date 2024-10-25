@@ -136,15 +136,15 @@ bool cpuDump(cpu_t *cpu) {
     size_t curPosition = ((size_t)(cpu->ip - cpu->code));
     size_t startPos = (curPosition > 10) ? curPosition - 10 : 0;
     size_t endPos = (curPosition + 10 < cpu->size) ? curPosition + 10 : cpu->size;
-    for (size_t idx = startPos; idx <= endPos; idx++) {
-        logPrint(L_DEBUG, 0, " %7x", idx);
+    for (size_t idx = startPos; idx < endPos; idx++) {
+        logPrint(L_DEBUG, 0, " %8x", idx);
     }
     logPrint(L_DEBUG, 0, "\n");
     for (size_t idx = startPos; idx < endPos; idx++) {
-        logPrint(L_DEBUG, 0, " %7x", cpu->code[idx]);
+        logPrint(L_DEBUG, 0, " %8x", cpu->code[idx]);
     }
     logPrint(L_DEBUG, 0, "\n");
-    for (size_t spaceCnt = 0; spaceCnt < (curPosition-startPos)*8 + 7; spaceCnt++)
+    for (size_t spaceCnt = 0; spaceCnt < (curPosition-startPos)*9 + 7; spaceCnt++)
         logPrint(L_DEBUG, 0, " ");
 
     logPrint(L_DEBUG, 0, "^ %s\n", enumToCmd(CMD_OPS(*cpu->ip & MASK_CMD)));

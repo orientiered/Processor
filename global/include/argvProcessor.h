@@ -7,6 +7,7 @@
 /*------------------STRUCTS DEFINITIONS---------------------------------------*/
 
 const size_t MAX_REGISTERED_FLAGS = 50;   ///< maximum amount of flags
+const size_t MAX_DEFAULT_ARGS     = 10;   ///< maximum amount of stored non-flags
 
 enum argvStatus {
     ARGV_SUCCESS  = 0,
@@ -55,6 +56,7 @@ typedef struct FlagsHolder {
 
 /// @brief Set header of help message
 enum argvStatus setHelpMessageHeader(const char* header);
+/// @brief Enables default processing of -h flag
 enum argvStatus enableHelpFlag(const char *header);
 
 /*!
@@ -70,6 +72,13 @@ enum argvStatus registerFlag(enum flagType type,
     @return SUCCESS if parsed correctly, ERROR otherwise
 */
 enum argvStatus processArgs(int argc, const char *argv[]);
+
+/*!
+    @brief get argument that wasn't processed as flag by it's index
+    @return NULL if there's no such argument, pointer to null terminated string otherwise
+*/
+const char *getDefaultArgument(size_t idx);
+
 
 /*!
     @brief Prints help message containing descriptions of all flags

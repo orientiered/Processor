@@ -21,3 +21,4 @@ badApple: asm
 clean:
 	cd spu && $(MAKE) clean
 	cd asm && $(MAKE) clean
+	cd disasm && $(MAKE) clean

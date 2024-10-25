@@ -90,12 +90,26 @@ static bool writeCmd(FILE *out, int *code, int **ip) {
         printedChars += fprintf(out, "r%cx", 'a' + (**ip) - 1);
         *ip += REG_LEN;
     }
+
+
+    #define ARG_NONE        fprintf(out, "%.3g", float(**ip) / FP_EXPONENT)
+    #define ARG_PUSH_LIKE   ARG_NONE
+    #define ARG_POP_LIKE    ARG_NONE
+    #define ARG_LABEL       fprintf(out, "%d",   **ip)
+    #define DEF_CMD_(cmdName, cmdIndex, argHandler, ...) \
+        case CMD_##cmdName: printedChars += argHandler; break;
+
     if (IMMEDIATE) {
         if (REGISTER)
             printedChars += fprintf(out, " + ");
-        printedChars += fprintf(out, "%d", (**ip) );
+        switch(command) {
+            #include "Commands.h"
+            default: logPrint(L_ZERO, 1, "Unknown command %d\n", command); return false;
+        }
+        //printedChars += fprintf(out, "%.3f", float(**ip) / FP_EXPONENT );
         *ip += ARG_LEN;
     }
+    #undef DEF_CMD_
     if (MEMORY)
         printedChars += fprintf(out, "]");
 

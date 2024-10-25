@@ -17,10 +17,10 @@ const int ARGV_ERROR_EXIT = 3;
 
 int main(int argc, const char *argv[]) {
     logOpen();
-    setLogLevel(L_ZERO);
+    setLogLevel(L_DEBUG);
     registerFlag(TYPE_STRING, "-i", "--input", "input file with code");
     registerFlag(TYPE_BLANK,  "-d", "--debug", "Disables log buffering and sets max logLevel");
-    enableHelpFlag("--Software processing unit--\nUsage: ./spu.out [arguments]\n");
+    enableHelpFlag("--Software processing unit--\nUsage: ./spu.out [arguments]... file\n\t'file' has higher priority than -i flag\n");
     switch(processArgs(argc, argv)) {
     case ARGV_HELP_MSG:     return HELP_MSG_EXIT;
     case ARGV_ERROR:        return ARGV_ERROR_EXIT;
@@ -31,11 +31,16 @@ int main(int argc, const char *argv[]) {
     if (isFlagSet("-d")) {
         //logDisableBuffering();
         setLogLevel(L_EXTRA);
-    }
-    if (isFlagSet("-i"))
+    } else
+        setLogLevel(L_ZERO);
+
+    if (getDefaultArgument(0) != NULL) { //first non-flag arguments is considered as filename
+        fileName = getDefaultArgument(0);
+    } else if (isFlagSet("-i")) {
         fileName = getFlagValue("-i").string_;
-    else
+    } else {
         logPrint(L_ZERO, 1, "Using default program name: %s\n", fileName);
+    }
 
     srand(time(NULL));
     cpu_t cpu = {0};

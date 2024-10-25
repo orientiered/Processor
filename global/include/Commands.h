@@ -135,10 +135,10 @@ DEF_CMD_(DUMP,  26, ARG_NONE,
     IP += CMD_LEN;
     setLogLevel(lg);
 })
-// DEF_CMD_(CHR,   27, ARG_PUSH_LIKE,
-// {
-//     printf("%c", GET_ARG_PUSH);
-// })
+DEF_CMD_(CHR,   27, ARG_PUSH_LIKE,
+{
+    printf("%c", GET_ARG_PUSH / FP_EXPONENT);
+})
 
 #undef ARG_NONE
 #undef ARG_PUSH_LIKE
