@@ -24,6 +24,7 @@ int main(int argc, const char *argv[]) {
     switch(processArgs(argc, argv)) {
     case ARGV_HELP_MSG:     return HELP_MSG_EXIT;
     case ARGV_ERROR:        return ARGV_ERROR_EXIT;
+    case ARGV_SUCCESS:      break;
     default:                break;
     }
 
@@ -42,7 +43,7 @@ int main(int argc, const char *argv[]) {
         logPrint(L_ZERO, 1, "Using default program name: %s\n", fileName);
     }
 
-    srand(time(NULL));
+    srand( unsigned(time(NULL)) );
     cpu_t cpu = {0};
     if (!cpuCtor(&cpu, fileName)) {
         logPrint(L_ZERO, 1, "Terminating\n");

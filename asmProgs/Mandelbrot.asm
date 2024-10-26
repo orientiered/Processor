@@ -141,7 +141,7 @@ CYCLE_END:
     push [4001]
     out
 
-    call checkModule
+    call checkModule:
     ret
 
 checkModule:

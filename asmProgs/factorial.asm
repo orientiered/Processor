@@ -8,7 +8,7 @@ BEGIN:
     jbe     END:
 
 
-    call Factorial
+    call    Factorial
     push    rax
     out
     jmp     BEGIN

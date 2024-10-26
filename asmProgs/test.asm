@@ -1,4 +1,5 @@
 START:
+    pop  5
     push rax
     push 256
     jb   END:

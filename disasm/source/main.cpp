@@ -16,18 +16,22 @@ int main(int argc, const char *argv[]) {
 
     registerFlag(TYPE_STRING, "-i", "--input",   "Input file name");
     registerFlag(TYPE_STRING, "-o", "--output",  "Output file name(optional)");
-    enableHelpFlag("--Disassembler for spu--\nUsage: ./dsm.out [args]\n");
+    enableHelpFlag("--Disassembler for spu--\nUsage: ./dsm.out [args]... file\n"
+                   "\t'file' has higher priority than -i flag\n");
+
 
     if (processArgs(argc, argv) != ARGV_SUCCESS)
         return 1;
 
-    if (!isFlagSet("-i")) {
-        logPrint(L_ZERO, 1, "No input file\n");
-        logClose();
-        return 1;
+    const char *inputName = "program.lol";
+    if (getDefaultArgument(0) != NULL) {
+        inputName = getDefaultArgument(0);
+    } else if (isFlagSet("-i")) {
+        inputName = getFlagValue("-i").string_;
+    } else {
+        logPrint(L_ZERO, 1, "Using default input file: %s\n", inputName);
     }
 
-    const char *inputName = getFlagValue("-i").string_;
     char *outName = isFlagSet("-o")  ?  getFlagValue("-o").string_ :
                                         constructOutName(inputName, extensionName);
 

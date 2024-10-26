@@ -68,14 +68,14 @@ static const char *enumToCmd(enum CMD_OPS cmdCode) {
 }
 
 static bool writeCmd(FILE *out, int *code, int **ip) {
-    int *cmdIp     = *ip;
-    int  command   = **ip & MASK_CMD;
-    bool REGISTER  = **ip & MASK_REGISTER;
-    bool IMMEDIATE = **ip & MASK_IMMEDIATE;
-    bool MEMORY    = **ip & MASK_MEMORY;
+    int *cmdIp  = *ip;
+    unsigned command = **ip & MASK_CMD;
+    bool REGISTER    = **ip & MASK_REGISTER;
+    bool IMMEDIATE   = **ip & MASK_IMMEDIATE;
+    bool MEMORY      = **ip & MASK_MEMORY;
 
     const char *cmdName = enumToCmd(CMD_OPS(command));
-    int printedChars = 0;
+    size_t printedChars = 0;
     if (cmdName == NULL) {
         logPrint(L_ZERO, 1, "Unknown command: %d\n", *cmdIp);
         return false;
@@ -120,7 +120,7 @@ static bool writeCmd(FILE *out, int *code, int **ip) {
     fprintf(out, "(%02X) ~%d%d%d|%02d~ ", *cmdIp, MEMORY, REGISTER, IMMEDIATE, command);
     cmdIp++;
     for (; cmdIp < *ip; cmdIp++)
-        fprintf(out, "%08lX ", *cmdIp);
+        fprintf(out, "%08X ", *cmdIp);
     fprintf(out, "\n");
 
     return true;

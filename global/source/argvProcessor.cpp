@@ -140,7 +140,7 @@ enum argvStatus processArgs(int argc, const char *argv[]) {
         i  = argc - remainToScan; //moving to next arguments
     }
 
-    char *argvConcatenated = joinStrings(argv, argc, " ");
+    char *argvConcatenated = joinStrings(argv, (size_t) argc, " ");
     //TODO: add "" on strings with " "
     logPrint(L_DEBUG, 0, "%s\n", argvConcatenated);
     free(argvConcatenated);
